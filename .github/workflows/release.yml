@@ -42,6 +42,7 @@ jobs:
           cache: true
 
       - name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+        shell: bash
         run: |
           VERSION="${{ github.ref_name }}"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
