@@ -34,8 +34,12 @@ jobs:
         shell: bash
         run: |
           VERSION="$(git describe --tags 2>/dev/null || echo dev)-$(git rev-parse --short HEAD)"
+          LDFLAGS="-X main.Version=$VERSION"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            LDFLAGS="-H windowsgui -X main.Version=$VERSION"
+          fi
           CGO_ENABLED=${{ runner.os == 'Windows' && '0' || '1' }} \
-            go build -ldflags="-X main.Version=$VERSION" \
+            go build -ldflags="$LDFLAGS" \
             -o "nograsswrapper${{ runner.os == 'Windows' && '.exe' || '' }}" ./src/
 
       - name: Vet

@@ -184,10 +184,12 @@ func (t *Tray) generateAndCopy() {
 		return
 	}
 
-	// Save to desktop as side effect
+	// Save image to desktop (skip on Windows — would clutter desktop)
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, "Desktop")
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
+	if runtime.GOOS == "windows" {
+		dir = os.TempDir()
+	} else if _, err := os.Stat(dir); os.IsNotExist(err) {
 		dir = home
 	}
 	path := filepath.Join(dir, fmt.Sprintf("nograss_wrapper_%s.png", time.Now().Format("2006-01-02")))

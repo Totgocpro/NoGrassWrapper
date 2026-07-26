@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"image/png"
 	"log"
+	"runtime"
 	"sync"
 
 	"github.com/srwiley/oksvg"
@@ -23,6 +24,17 @@ var (
 
 func getIcon() []byte {
 	iconOnce.Do(func() {
+		// Windows systray has issues with SVG-rendered icons, use fallback
+		if runtime.GOOS == "windows" {
+			img := generateFallbackIcon()
+			var buf bytes.Buffer
+			if err := png.Encode(&buf, img); err != nil {
+				log.Printf("[icon] encode error: %v", err)
+				return
+			}
+			iconPNGBytes = buf.Bytes()
+			return
+		}
 		img, err := renderSVG(iconSVG, 64, 64)
 		if err != nil {
 			log.Printf("[icon] SVG render error: %v, using fallback", err)

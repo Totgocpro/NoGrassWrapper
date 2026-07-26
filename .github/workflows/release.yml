@@ -79,8 +79,12 @@ jobs:
           CGO_ENABLED: ${{ matrix.goos == 'windows' && '0' || '1' }}
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
+          LDFLAGS="-X main.Version=$VERSION"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            LDFLAGS="-H windowsgui -X main.Version=$VERSION"
+          fi
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-            go build -ldflags="-X main.Version=$VERSION" \
+            go build -ldflags="$LDFLAGS" \
             -o "nograsswrapper-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" \
             ./src/
 
@@ -105,7 +109,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: setup-binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             nograsswrapper-*-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
             dist/NoGrassWrapper-Setup-*.exe
