@@ -4,10 +4,12 @@
 #define MyAppName "NoGrassWrapper"
 #define MyAppExeName "nograsswrapper.exe"
 #define MyAppPublisher "NoGrassWrapper"
+#define MyAppVersion "0.0.0"
 
 [Setup]
 AppName={#MyAppName}
 AppPublisher={#MyAppPublisher}
+AppVersion={#MyAppVersion}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\dist
