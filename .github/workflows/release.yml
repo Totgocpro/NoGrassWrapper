@@ -49,6 +49,8 @@ jobs:
 
       - name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
         shell: bash
+        env:
+          CGO_ENABLED: ${{ matrix.goos == 'windows' && '0' || '1' }}
         run: |
           VERSION="${{ github.ref_name }}"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
