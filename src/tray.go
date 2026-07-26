@@ -144,7 +144,7 @@ func (t *Tray) onReady() {
 		for {
 			select {
 			case <-mCopy.ClickedCh:
-				t.generateAndCopy()
+				go t.generateAndCopy()
 			case <-mSettings.ClickedCh:
 				go showSettingsDialog(t.store)
 			case <-mQuit.ClickedCh:
