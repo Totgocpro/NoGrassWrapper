@@ -105,7 +105,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: setup-binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             nograsswrapper-*-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
             dist/NoGrassWrapper-Setup-*.exe
