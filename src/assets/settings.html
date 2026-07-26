@@ -11,28 +11,48 @@ body {
   display:flex; justify-content:center; align-items:center; height:100vh;
 }
 .card {
-  background:#191933; border:1px solid #2a2a55; border-radius:12px; padding:32px; width:420px;
+  background:#191933; border:1px solid #2a2a55; border-radius:12px; display:flex; width:560px; min-height:380px; overflow:hidden;
 }
-h1 { font-size:22px; color:#fff; margin-bottom:4px; }
-.sub { font-size:12px; color:#7878a0; margin-bottom:24px; }
-label { display:block; font-size:13px; color:#a0a0c8; margin-bottom:6px; margin-top:16px; }
+.sidebar {
+  width:140px; background:#12122a; border-right:1px solid #2a2a55; display:flex; flex-direction:column; padding:8px 0;
+}
+.tab {
+  padding:14px 20px; font-size:13px; font-weight:600; cursor:pointer; color:#7878a0; border:none; background:none; text-align:left; transition:all 0.15s; outline:none;
+}
+.tab:hover { color:#c8c8e6; background:rgba(255,255,255,0.03); }
+.tab.active { color:#34d399; background:rgba(52,211,153,0.08); border-right:2px solid #34d399; }
+.content {
+  flex:1; padding:28px 32px; overflow-y:auto;
+}
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+h1 { font-size:18px; color:#fff; margin-bottom:2px; }
+.sub { font-size:11px; color:#7878a0; margin-bottom:20px; }
+label { display:block; font-size:12px; color:#a0a0c8; margin-bottom:5px; margin-top:14px; }
+label:first-child { margin-top:0; }
 input[type=text] {
-  width:100%; padding:10px 12px; border:1px solid #2a2a55; border-radius:8px;
-  background:#0F0F19; color:#eee; font-size:14px; outline:none;
+  width:100%; padding:9px 12px; border:1px solid #2a2a55; border-radius:8px;
+  background:#0F0F19; color:#eee; font-size:13px; outline:none;
 }
 input[type=text]:focus { border-color:#34d399; }
 input[type=file] { display:none; }
 .file-row { display:flex; gap:8px; align-items:center; }
 .file-row input[type=text] { flex:1; }
 .file-row .browse-btn {
-  padding:10px 16px; border:1px solid #2a2a55; border-radius:8px;
-  background:#0F0F19; color:#34d399; font-size:13px; cursor:pointer; white-space:nowrap;
+  padding:9px 14px; border:1px solid #2a2a55; border-radius:8px;
+  background:#0F0F19; color:#34d399; font-size:12px; cursor:pointer; white-space:nowrap;
 }
 .file-row .browse-btn:hover { border-color:#34d399; }
 .file-name { font-size:11px; color:#34d399; margin-top:4px; display:none; }
-.buttons { display:flex; justify-content:flex-end; gap:10px; margin-top:28px; }
+textarea {
+  width:100%; padding:9px 12px; border:1px solid #2a2a55; border-radius:8px;
+  background:#0F0F19; color:#eee; font-size:13px; outline:none; resize:vertical; min-height:140px; font-family:inherit;
+}
+textarea:focus { border-color:#34d399; }
+.hint { font-size:11px; color:#58587a; margin-top:6px; }
+.buttons { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
 .btn {
-  padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none;
+  padding:9px 18px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:none;
 }
 .btn-cancel { background:#2a2a55; color:#a0a0c8; }
 .btn-cancel:hover { background:#3a3a6a; }
@@ -42,28 +62,52 @@ input[type=file] { display:none; }
 </head>
 <body>
 <div class="card">
-  <h1>NoGrassWrapper Settings</h1>
-  <p class="sub">Configure your profile for the wrapper image</p>
-
-  <label for="username">Username</label>
-  <input type="text" id="username" placeholder="Your name">
-
-  <label>Avatar image</label>
-  <div class="file-row">
-    <input type="text" id="avatar" placeholder="No avatar set" readonly>
-    <div class="browse-btn" onclick="document.getElementById('filePicker').click()">Choose file</div>
+  <div class="sidebar">
+    <button class="tab active" data-tab="profile" onclick="switchTab('profile')">Profile</button>
+    <button class="tab" data-tab="privacy" onclick="switchTab('privacy')">Privacy</button>
   </div>
-  <div class="file-name" id="fileName"></div>
-  <input type="file" id="filePicker" accept="image/png,image/jpeg,image/gif,image/webp" onchange="onFilePicked(event)">
+  <div class="content">
+    <div class="tab-pane active" id="tab-profile">
+      <h1>Profile</h1>
+      <p class="sub">Configure your display name and avatar for the wrapper image</p>
 
-  <div class="buttons">
-    <button class="btn btn-cancel" onclick="onCancel()">Cancel</button>
-    <button class="btn btn-save" onclick="save()">Save</button>
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Your name">
+
+      <label>Avatar image</label>
+      <div class="file-row">
+        <input type="text" id="avatar" placeholder="No avatar set" readonly>
+        <div class="browse-btn" onclick="document.getElementById('filePicker').click()">Choose file</div>
+      </div>
+      <div class="file-name" id="fileName"></div>
+      <input type="file" id="filePicker" accept="image/png,image/jpeg,image/gif,image/webp" onchange="onFilePicked(event)">
+    </div>
+
+    <div class="tab-pane" id="tab-privacy">
+      <h1>Privacy</h1>
+      <p class="sub">Hide specific apps from appearing in the wrapper image</p>
+
+      <label for="hidden_apps">Hidden applications</label>
+      <textarea id="hidden_apps" placeholder="firefox&#10;chrome&#10;discord"></textarea>
+      <div class="hint">Enter one app name per line. Matching is case-insensitive — &quot;firefox&quot; will match &quot;Firefox&quot;, &quot;Firefox Developer&quot;, etc.</div>
+    </div>
+
+    <div class="buttons" style="margin-top:auto;padding-top:24px;">
+      <button class="btn btn-cancel" onclick="onCancel()">Cancel</button>
+      <button class="btn btn-save" onclick="save()">Save</button>
+    </div>
   </div>
 </div>
 
 <script>
 let selectedFile = null;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab[data-tab="'+name+'"]').classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
 
 async function init() {
   try {
@@ -72,6 +116,9 @@ async function init() {
     document.getElementById('username').value = d.username || '';
     if (d.avatar) {
       document.getElementById('avatar').value = d.avatar;
+    }
+    if (d.hidden_apps && d.hidden_apps.length > 0) {
+      document.getElementById('hidden_apps').value = d.hidden_apps.join('\n');
     }
   } catch(e) {}
 }
@@ -99,6 +146,7 @@ async function save() {
   } else {
     fd.set('avatar_path', document.getElementById('avatar').value);
   }
+  fd.set('hidden_apps', document.getElementById('hidden_apps').value);
   await fetch('/save', {method: 'POST', body: fd});
   window.close();
 }

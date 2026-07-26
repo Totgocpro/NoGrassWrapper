@@ -38,6 +38,7 @@ type Store struct {
 	UnlockedAchievements []string                `json:"unlocked_achievements,omitempty"`
 	Username             string                  `json:"username,omitempty"`
 	AvatarPath           string                  `json:"avatar_path,omitempty"`
+	HiddenApps           []string                `json:"hidden_apps,omitempty"`
 }
 
 // PCScore calculates an unbounded "PC Usage Score" based on total data.

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -47,7 +48,20 @@ func showSettingsDialog(store *Storage) {
 
 	mux.HandleFunc("/data", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"username":"%s","avatar":"%s"}`, store.GetUsername(), store.GetAvatarPath())
+		hidden := store.GetHiddenApps()
+		hiddenJSON := "[]"
+		if len(hidden) > 0 {
+			b := "["
+			for i, h := range hidden {
+				if i > 0 {
+					b += ","
+				}
+				b += `"` + h + `"`
+			}
+			b += "]"
+			hiddenJSON = b
+		}
+		fmt.Fprintf(w, `{"username":"%s","avatar":"%s","hidden_apps":%s}`, store.GetUsername(), store.GetAvatarPath(), hiddenJSON)
 	})
 
 	mux.HandleFunc("/save", func(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +95,17 @@ func showSettingsDialog(store *Storage) {
 				store.SetAvatarPath(path)
 			}
 		}
+
+		// Parse hidden apps from textarea (one per line)
+		raw := r.FormValue("hidden_apps")
+		var hidden []string
+		for _, line := range strings.Split(raw, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				hidden = append(hidden, line)
+			}
+		}
+		store.SetHiddenApps(hidden)
 
 		_ = store.Save()
 		w.Write([]byte("ok"))

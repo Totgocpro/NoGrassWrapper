@@ -346,6 +346,20 @@ func (s *Storage) GetAvatarPath() string {
 	return s.data.AvatarPath
 }
 
+// GetHiddenApps returns the list of hidden app names.
+func (s *Storage) GetHiddenApps() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.data.HiddenApps
+}
+
+// SetHiddenApps sets the list of hidden app names.
+func (s *Storage) SetHiddenApps(apps []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data.HiddenApps = apps
+}
+
 // SetAvatarPath sets the avatar path.
 func (s *Storage) SetAvatarPath(path string) {
 	s.mu.Lock()
@@ -448,6 +462,7 @@ type Snapshot struct {
 	LastGrassDay  string
 	WeekAvg       int64 // average active seconds/day this week
 	WeekChange    int   // percentage change vs previous week
+	HiddenApps    []string
 }
 
 func weekBounds(t time.Time) (monday time.Time, sunday time.Time) {
@@ -549,6 +564,7 @@ func (s *Storage) Snapshot() *Snapshot {
 		LastGrassDay:  lastGrassDay,
 		WeekAvg:       weekAvg,
 		WeekChange:    weekChange,
+		HiddenApps:    append([]string{}, s.data.HiddenApps...),
 	}
 }
 

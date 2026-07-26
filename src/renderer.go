@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/fogleman/gg"
@@ -102,7 +103,7 @@ var appColors = []color.RGBA{
 }
 
 // GenerateBytes generates the PNG image and returns it as bytes.
-func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int) ([]byte, error) {
+func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string) ([]byte, error) {
 	dc := gg.NewContext(w.width, w.height)
 
 	w.drawBackground(dc)
@@ -114,7 +115,7 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 	tier := Tier(score, float64(data.ActiveSeconds)/3600.0)
 	w.drawStats(dc, data, streak, longestStreak, score, grade, tier, lastGrassDay, weekAvg, weekChange)
 	w.drawAchievements(dc, achievements)
-	w.drawAppBars(dc, data)
+	w.drawAppBars(dc, data, hiddenApps)
 	w.drawFooter(dc, streak, longestStreak, score, data.PCDyingScore())
 
 	var buf bytes.Buffer
@@ -125,8 +126,8 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 }
 
 // Generate creates a PNG image at the given path with usage stats.
-func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int) error {
-	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange)
+func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string) error {
+	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps)
 	if err != nil {
 		return err
 	}
@@ -294,7 +295,7 @@ func (w *WrapperImage) drawAchievements(dc *gg.Context, achievements []Achieveme
 	}
 }
 
-func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord) {
+func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApps []string) {
 	// Build bar data
 	type appEntry struct {
 		Name     string
@@ -312,6 +313,17 @@ func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord) {
 	i := 0
 	for name, sec := range merged {
 		if sec < 60 {
+			continue
+		}
+		// Filter out hidden apps (case-insensitive substring match)
+		skip := false
+		for _, hidden := range hiddenApps {
+			if strings.Contains(strings.ToLower(name), strings.ToLower(hidden)) {
+				skip = true
+				break
+			}
+		}
+		if skip {
 			continue
 		}
 		apps = append(apps, appEntry{
