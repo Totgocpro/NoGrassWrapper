@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -72,7 +73,15 @@ func (s *Storage) load() error {
 	}
 
 	if err := json.Unmarshal(data, s.data); err != nil {
-		return fmt.Errorf("parse: %w", err)
+		backup := s.filePath + ".corrupted." + time.Now().Format("20060102-150405")
+		if renameErr := os.Rename(s.filePath, backup); renameErr != nil {
+			return fmt.Errorf("parse: %w (and backup failed: %v)", err, renameErr)
+		}
+		log.Printf("[storage] corrupted data file renamed to %s — starting fresh", backup)
+		s.data = &Store{
+			DailyRecords: make(map[string]*DailyRecord),
+		}
+		return nil
 	}
 
 	// Ensure today's record exists
