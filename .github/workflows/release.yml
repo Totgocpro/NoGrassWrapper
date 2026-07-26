@@ -61,8 +61,11 @@ jobs:
           else
             VERSION="$(git describe --tags --always 2>/dev/null || echo dev)"
           fi
+          # AppVersion must be clean (no hyphens) for Inno Setup
+          APP_STRIP="${VERSION#v}"
+          APP_CLEAN="${APP_STRIP%%-*}"
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "APP_VERSION_STRIP=${VERSION#v}" >> "$GITHUB_OUTPUT"
+          echo "APP_VERSION_STRIP=${APP_CLEAN}" >> "$GITHUB_OUTPUT"
 
       - name: Install system deps (Linux)
         if: runner.os == 'Linux'
