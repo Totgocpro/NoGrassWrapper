@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ""
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: ".exe"
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            ext: ""
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            ext: ""
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+        run: |
+          VERSION="${{ github.ref_name }}"
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags="-X main.Version=$VERSION" \
+            -o "nograsswrapper-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" \
+            ./src/
+
+      - name: Build Windows installer (Windows only)
+        if: matrix.goos == 'windows'
+        run: |
+          # Rename binary to the expected name for the installer
+          copy "nograsswrapper-${{ github.ref_name }}-windows-amd64.exe" nograsswrapper.exe
+          # Compile installer via iscc (Inno Setup)
+          iscc installer/windows.iss
+        shell: cmd
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: nograsswrapper-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect binaries
+        run: |
+          mkdir release-assets
+          find artifacts -type f -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NoGrassWrapper ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            ## NoGrassWrapper ${{ github.ref_name }}
+
+            ### 🖥️ Downloads
+
+            | Platform | Architecture | File |
+            |----------|-------------|------|
+            | Linux    | amd64       | `nograsswrapper-${{ github.ref_name }}-linux-amd64` |
+            | Windows  | amd64       | `nograsswrapper-${{ github.ref_name }}-windows-amd64.exe` |
+            | macOS    | amd64       | `nograsswrapper-${{ github.ref_name }}-darwin-amd64` |
+            | macOS    | arm64       | `nograsswrapper-${{ github.ref_name }}-darwin-arm64` |
+
+            ### 📦 Installer (Windows)
+            Download `NoGrassWrapper-Setup.exe` from the assets below.
+
+            ### 🆕 What's Changed
+            See the commit log for details.
+          draft: false
+          prerelease: false
+          files: release-assets/*

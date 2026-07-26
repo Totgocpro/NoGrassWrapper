@@ -1,0 +1,85 @@
+{
+  "messages": [
+    {
+      "min_score": 10000,
+      "messages": [
+        "I should probably go outside",
+        "My only cardio is scrolling",
+        "The sunlight is just a rumor",
+        "I'm not procrastinating, I'm optimizing",
+        "My gaming chair has a permanent indent",
+        "If I could turn this score into money, I'd be a billionaire (which isn't the case, btw)."
+      ]
+    },
+    {
+      "min_score": 5000,
+      "messages": [
+        "My chair and I are now one",
+        "Vitamin D is overrated anyway",
+        "I've seen more blue light than sky",
+        "This is my final form",
+        "I don't need grass, I have RGB"
+      ]
+    },
+    {
+      "min_score": 2000,
+      "messages": [
+        "Doom scrolling is my cardio",
+        "Sleep is for the weak (and I'm weak)",
+        "My screen has a face-shaped imprint",
+        "Productivity is just a suggestion",
+        "I'll touch grass tomorrow, for sure"
+      ]
+    },
+    {
+      "min_score": 1000,
+      "messages": [
+        "Yes, this is my personality now",
+        "My browser has more tabs than my life",
+        "I'm not addicted, I'm dedicated",
+        "Coffee and caffeine are my co-pilots",
+        "Who needs a social life when you have Wi-Fi?"
+      ]
+    },
+    {
+      "min_score": 500,
+      "messages": [
+        "This is fine",
+        "I'm in control. Mostly.",
+        "Just a few more minutes... hours...",
+        "I can stop whenever I want. Probably.",
+        "One does not simply stop clicking"
+      ]
+    },
+    {
+      "min_score": 200,
+      "messages": [
+        "Just one more hour...",
+        "I'll close my laptop after this, I swear",
+        "The rabbit hole keeps getting deeper",
+        "Famous last words: 'Just a quick check'",
+        "I'm building character, not screen time"
+      ]
+    },
+    {
+      "min_score": 100,
+      "messages": [
+        "I can quit anytime I want",
+        "It's not a hobby, it's a lifestyle",
+        "I'm researching, not wasting time",
+        "This is fine. Everything is fine.",
+        "My screen time is in the healthy range... right?"
+      ]
+    },
+    {
+      "min_score": 0,
+      "messages": [
+        "Amateur numbers, I see",
+        "You call that screen time? Cute.",
+        "The tutorial hasn't even started yet",
+        "Those are rookie numbers",
+        "Your PC is barely warm"
+      ]
+    }
+  ]
+}

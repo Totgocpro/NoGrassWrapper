@@ -1,0 +1,94 @@
+{
+  "achievements": [
+    {
+      "id": "speedrunner",
+      "name": "Speedrunner",
+      "description": "Less than 1 hour on PC in a single day",
+      "hint": "Spend less than 60 minutes total on your PC in one day"
+    },
+    {
+      "id": "forget_the_toilets",
+      "name": "Forget the toilets.",
+      "description": "6 hours active in a day without AFK",
+      "hint": "Stay actively on your PC for 6 hours with almost no idle time"
+    },
+    {
+      "id": "unemployed",
+      "name": "Unemployed",
+      "description": "24 hours total on PC",
+      "hint": "Accumulate 24 hours of total PC usage"
+    },
+    {
+      "id": "button_masher",
+      "name": "Button Masher",
+      "description": "Used 10+ different applications",
+      "hint": "Open and use 10 different applications in total"
+    },
+    {
+      "id": "multitasker",
+      "name": "Multitasker",
+      "description": "5+ apps in a single day",
+      "hint": "Use 5 or more different applications in one day"
+    },
+    {
+      "id": "weekend_warrior",
+      "name": "Weekend Warrior",
+      "description": "12+ hours on a weekend day",
+      "hint": "Spend 12 or more hours on your PC on Saturday or Sunday"
+    },
+    {
+      "id": "touch_grass_denied",
+      "name": "Touch Grass Denied",
+      "description": "7-day streak",
+      "hint": "Use your PC every day for 7 consecutive days"
+    },
+    {
+      "id": "chair_potato",
+      "name": "Chair Potato",
+      "description": "AFK ratio below 5%",
+      "hint": "Keep your idle time under 5% of total usage"
+    },
+    {
+      "id": "night_owl",
+      "name": "Night Owl",
+      "description": "100 hours of active time",
+      "hint": "Accumulate 100 hours of active PC usage"
+    },
+    {
+      "id": "keyboard_destroyer",
+      "name": "Keyboard Destroyer",
+      "description": "250 hours of active time",
+      "hint": "Accumulate 250 hours of active PC usage"
+    },
+    {
+      "id": "the_grind",
+      "name": "The Grind",
+      "description": "500 hours of active time",
+      "hint": "Accumulate 500 hours of active PC usage"
+    },
+    {
+      "id": "carbon_monster",
+      "name": "Carbon Monster",
+      "description": "1000 hours of active time",
+      "hint": "Accumulate 1000 hours of active PC usage"
+    },
+    {
+      "id": "veteran",
+      "name": "Veteran",
+      "description": "30-day streak",
+      "hint": "Use your PC every day for 30 consecutive days"
+    },
+    {
+      "id": "dying_pc",
+      "name": "Dying PC",
+      "description": "CPU usage above 70% in a single day",
+      "hint": "Average CPU usage over 70% for an entire day"
+    },
+    {
+      "id": "write_once_trash_everywhere",
+      "name": "Write Once, Trash Everywhere",
+      "description": "RAM usage above 70% in a single day",
+      "hint": "Average RAM usage over 70% for an entire day"
+    }
+  ]
+}

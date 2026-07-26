@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoGrassWrapper Settings</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #0F0F19; color: #c8c8e6; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  display:flex; justify-content:center; align-items:center; height:100vh;
+}
+.card {
+  background:#191933; border:1px solid #2a2a55; border-radius:12px; padding:32px; width:420px;
+}
+h1 { font-size:22px; color:#fff; margin-bottom:4px; }
+.sub { font-size:12px; color:#7878a0; margin-bottom:24px; }
+label { display:block; font-size:13px; color:#a0a0c8; margin-bottom:6px; margin-top:16px; }
+input[type=text] {
+  width:100%; padding:10px 12px; border:1px solid #2a2a55; border-radius:8px;
+  background:#0F0F19; color:#eee; font-size:14px; outline:none;
+}
+input[type=text]:focus { border-color:#34d399; }
+input[type=file] { display:none; }
+.file-row { display:flex; gap:8px; align-items:center; }
+.file-row input[type=text] { flex:1; }
+.file-row .browse-btn {
+  padding:10px 16px; border:1px solid #2a2a55; border-radius:8px;
+  background:#0F0F19; color:#34d399; font-size:13px; cursor:pointer; white-space:nowrap;
+}
+.file-row .browse-btn:hover { border-color:#34d399; }
+.file-name { font-size:11px; color:#34d399; margin-top:4px; display:none; }
+.buttons { display:flex; justify-content:flex-end; gap:10px; margin-top:28px; }
+.btn {
+  padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none;
+}
+.btn-cancel { background:#2a2a55; color:#a0a0c8; }
+.btn-cancel:hover { background:#3a3a6a; }
+.btn-save { background:#34d399; color:#0F0F19; }
+.btn-save:hover { background:#2ec48a; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>NoGrassWrapper Settings</h1>
+  <p class="sub">Configure your profile for the wrapper image</p>
+
+  <label for="username">Username</label>
+  <input type="text" id="username" placeholder="Your name">
+
+  <label>Avatar image</label>
+  <div class="file-row">
+    <input type="text" id="avatar" placeholder="No avatar set" readonly>
+    <div class="browse-btn" onclick="document.getElementById('filePicker').click()">Choose file</div>
+  </div>
+  <div class="file-name" id="fileName"></div>
+  <input type="file" id="filePicker" accept="image/png,image/jpeg,image/gif,image/webp" onchange="onFilePicked(event)">
+
+  <div class="buttons">
+    <button class="btn btn-cancel" onclick="onCancel()">Cancel</button>
+    <button class="btn btn-save" onclick="save()">Save</button>
+  </div>
+</div>
+
+<script>
+let selectedFile = null;
+
+async function init() {
+  try {
+    const r = await fetch('/data');
+    const d = await r.json();
+    document.getElementById('username').value = d.username || '';
+    if (d.avatar) {
+      document.getElementById('avatar').value = d.avatar;
+    }
+  } catch(e) {}
+}
+
+function onFilePicked(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  selectedFile = f;
+  document.getElementById('avatar').value = f.name;
+  document.getElementById('fileName').textContent = 'Selected: ' + f.name;
+  document.getElementById('fileName').style.display = 'block';
+}
+
+async function onCancel() {
+  await fetch('/cancel', {method: 'POST'});
+  window.close();
+}
+
+async function save() {
+  const u = document.getElementById('username').value;
+  const fd = new FormData();
+  fd.set('username', u);
+  if (selectedFile) {
+    fd.set('avatar_file', selectedFile);
+  } else {
+    fd.set('avatar_path', document.getElementById('avatar').value);
+  }
+  await fetch('/save', {method: 'POST', body: fd});
+  window.close();
+}
+
+window.addEventListener('beforeunload', function() {
+  navigator.sendBeacon('/cancel', '');
+});
+
+init();
+</script>
+</body>
+</html>
