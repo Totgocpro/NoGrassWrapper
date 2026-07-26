@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	_ "embed"
 	"image"
 	"image/color"
@@ -25,19 +26,51 @@ var (
 	iconPNGBytes []byte
 )
 
+// wrapICO wraps PNG data in ICO format required by Windows.
+func wrapICO(pngData []byte) []byte {
+	var buf bytes.Buffer
+	// ICO header
+	binary.Write(&buf, binary.LittleEndian, uint16(0))    // reserved
+	binary.Write(&buf, binary.LittleEndian, uint16(1))    // type: icon
+	binary.Write(&buf, binary.LittleEndian, uint16(1))    // count
+	// Directory entry
+	img, err := png.Decode(bytes.NewReader(pngData))
+	if err != nil {
+		return pngData
+	}
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	if w >= 256 {
+		buf.WriteByte(0)
+	} else {
+		buf.WriteByte(byte(w))
+	}
+	if h >= 256 {
+		buf.WriteByte(0)
+	} else {
+		buf.WriteByte(byte(h))
+	}
+	buf.WriteByte(0) // color count
+	buf.WriteByte(0) // reserved
+	binary.Write(&buf, binary.LittleEndian, uint16(1))    // planes
+	binary.Write(&buf, binary.LittleEndian, uint16(32))   // bit count
+	binary.Write(&buf, binary.LittleEndian, uint32(len(pngData))) // size
+	binary.Write(&buf, binary.LittleEndian, uint32(22))   // offset to PNG data
+	buf.Write(pngData)
+	return buf.Bytes()
+}
+
 func getIcon() []byte {
 	iconOnce.Do(func() {
 		if runtime.GOOS == "windows" {
-			// Windows systray has issues with SVG-rendered icons
+			// Windows systray needs ICO format, not raw PNG
 			if len(iconPNG) > 0 {
-				iconPNGBytes = iconPNG
+				iconPNGBytes = wrapICO(iconPNG)
 				return
 			}
-			// Last resort: procedural fallback
 			img := generateFallbackIcon()
 			var buf bytes.Buffer
 			png.Encode(&buf, img)
-			iconPNGBytes = buf.Bytes()
+			iconPNGBytes = wrapICO(buf.Bytes())
 			return
 		}
 		img, err := renderSVG(iconSVG, 64, 64)
