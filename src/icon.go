@@ -17,6 +17,9 @@ import (
 //go:embed assets/Icon.svg
 var iconSVG []byte
 
+//go:embed assets/Icon.png
+var iconPNG []byte
+
 var (
 	iconOnce     sync.Once
 	iconPNGBytes []byte
@@ -24,20 +27,26 @@ var (
 
 func getIcon() []byte {
 	iconOnce.Do(func() {
-		// Windows systray has issues with SVG-rendered icons, use fallback
 		if runtime.GOOS == "windows" {
-			img := generateFallbackIcon()
-			var buf bytes.Buffer
-			if err := png.Encode(&buf, img); err != nil {
-				log.Printf("[icon] encode error: %v", err)
+			// Windows systray has issues with SVG-rendered icons
+			if len(iconPNG) > 0 {
+				iconPNGBytes = iconPNG
 				return
 			}
+			// Last resort: procedural fallback
+			img := generateFallbackIcon()
+			var buf bytes.Buffer
+			png.Encode(&buf, img)
 			iconPNGBytes = buf.Bytes()
 			return
 		}
 		img, err := renderSVG(iconSVG, 64, 64)
 		if err != nil {
-			log.Printf("[icon] SVG render error: %v, using fallback", err)
+			log.Printf("[icon] SVG render error: %v", err)
+			if len(iconPNG) > 0 {
+				iconPNGBytes = iconPNG
+				return
+			}
 			img = generateFallbackIcon()
 		}
 		var buf bytes.Buffer

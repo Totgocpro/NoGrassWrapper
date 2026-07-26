@@ -4,10 +4,22 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD="$DIR/build"
+SRC="$DIR/src"
 
 echo "==> NoGrassWrapper Builder"
 echo "    Output dir: ${BUILD}"
 echo ""
+
+# Generate icon PNG from SVG for Windows fallback
+if command -v rsvg-convert &>/dev/null; then
+    rsvg-convert -w 64 -h 64 "$DIR/assets/Icon.svg" > "$SRC/assets/Icon.png"
+    echo "  Generated src/assets/Icon.png"
+elif command -v convert &>/dev/null; then
+    convert -background none -size 64x64 "$DIR/assets/Icon.svg" "$SRC/assets/Icon.png"
+    echo "  Generated src/assets/Icon.png (via ImageMagick)"
+else
+    echo "  [WARN] No SVG converter found — using existing src/assets/Icon.png"
+fi
 
 build() {
     local os="$1" arch="$2" suffix="$3" cgo="${4:-0}"
@@ -15,8 +27,12 @@ build() {
     local out="${BUILD}/${name}"
     local ver
     ver="$(git describe --tags 2>/dev/null || echo dev)"
+    local ldflags="-s -w -X main.Version=${ver}"
+    if [[ "$os" == "windows" ]]; then
+        ldflags="-H windowsgui -s -w -X main.Version=${ver}"
+    fi
     echo "  Building ${os}/${arch}  (version: ${ver}, cgo: ${cgo})..."
-    GOOS="$os" GOARCH="$arch" CGO_ENABLED="$cgo" CC="${CC:-gcc}" go build -ldflags="-s -w -X main.Version=${ver}" -o "${out}" ./src 2>&1 | sed 's/^/    /'
+    GOOS="$os" GOARCH="$arch" CGO_ENABLED="$cgo" CC="${CC:-gcc}" go build -ldflags="${ldflags}" -o "${out}" ./src 2>&1 | sed 's/^/    /'
     local size
     size=$(du -h "${out}" 2>/dev/null | cut -f1)
     echo "    -> ${out}  (${size})"
