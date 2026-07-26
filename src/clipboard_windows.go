@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func copyImageToClipboard(data []byte) error {
@@ -20,11 +21,13 @@ func copyImageToClipboard(data []byte) error {
 	}
 	f.Close()
 
+	// Escape single quotes in path for PowerShell
+	path := strings.ReplaceAll(f.Name(), "'", "''")
 	ps := fmt.Sprintf(
 		`Add-Type -AssemblyName System.Windows.Forms; `+
-			`[Windows.Forms.Clipboard]::SetImage([Drawing.Image]::FromFile('%s'))`,
-		f.Name(),
+			`[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('%s'))`,
+		path,
 	)
-	cmd := exec.Command("powershell", "-NoProfile", "-Command", ps)
+	cmd := exec.Command("powershell", "-NoProfile", "-Sta", "-Command", ps)
 	return cmd.Run()
 }
