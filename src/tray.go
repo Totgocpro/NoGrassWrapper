@@ -70,6 +70,8 @@ func (t *Tray) onReady() {
 	systray.SetTitle("NGW")
 	systray.SetTooltip("NoGrassWrapper — tracking your screen time")
 
+	initClipboard()
+
 	// Current stats in menu
 	t.mStats = systray.AddMenuItem("Tracking...", "Current stats")
 	t.mStats.Disable()
