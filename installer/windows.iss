@@ -78,7 +78,7 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ConfigDir, ConfigFile: string;
-  Username, AvatarPath: string;
+  Username, AvatarPath, DestAvatar, Ext: string;
   Json: string;
 begin
   if CurStep = ssPostInstall then
@@ -91,15 +91,30 @@ begin
     Username := UsernamePage.Values[0];
     AvatarPath := AvatarPage.Values[0];
 
-    // Escape quotes for JSON
+    // Copy avatar to config dir if one was selected
+    DestAvatar := '';
+    if AvatarPath <> '' then
+    begin
+      Ext := '.png';
+      if Pos('.jpg', Lowercase(AvatarPath)) > 0 then Ext := '.jpg'
+      else if Pos('.jpeg', Lowercase(AvatarPath)) > 0 then Ext := '.jpeg'
+      else if Pos('.gif', Lowercase(AvatarPath)) > 0 then Ext := '.gif'
+      else if Pos('.webp', Lowercase(AvatarPath)) > 0 then Ext := '.webp';
+      DestAvatar := ConfigDir + '\avatar' + Ext;
+      FileCopy(AvatarPath, DestAvatar, False);
+    end;
+
+    // Escape special characters for JSON
+    StringChange(Username, '\', '\\');
     StringChange(Username, '"', '\"');
-    StringChange(AvatarPath, '"', '\"');
+    StringChange(DestAvatar, '\', '\\');
+    StringChange(DestAvatar, '"', '\"');
 
     // Build minimal JSON with username and avatar_path
     Json := '{' +
       '"version":1,' +
       '"username":"' + Username + '",' +
-      '"avatar_path":"' + AvatarPath + '",' +
+      '"avatar_path":"' + DestAvatar + '",' +
       '"daily_records":{},' +
       '"current_day":"",' +
       '"current_app":"",' +
@@ -116,4 +131,5 @@ begin
 
     SaveStringToFile(ConfigFile, Json, False);
   end;
+end;
 end;

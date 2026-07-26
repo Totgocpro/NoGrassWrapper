@@ -61,7 +61,7 @@ func showSettingsDialog(store *Storage) {
 			b += "]"
 			hiddenJSON = b
 		}
-		fmt.Fprintf(w, `{"username":"%s","avatar":"%s","hidden_apps":%s}`, store.GetUsername(), store.GetAvatarPath(), hiddenJSON)
+		fmt.Fprintf(w, `{"username":"%s","avatar":"%s","hidden_apps":%s}`, store.GetUsername(), strings.ReplaceAll(store.GetAvatarPath(), `\`, `\\`), hiddenJSON)
 	})
 
 	mux.HandleFunc("/save", func(w http.ResponseWriter, r *http.Request) {
