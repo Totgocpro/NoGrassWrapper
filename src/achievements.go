@@ -7,7 +7,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -163,6 +165,35 @@ func sendNotification(title, message string) {
 	case "darwin":
 		exec.Command("osascript", "-e",
 			fmt.Sprintf(`display notification "%s" with title "%s"`, message, title)).Run()
+	case "windows":
+		// Save grass icon to temp file for the notification
+		iconPath := filepath.Join(os.TempDir(), "ngw-notif-icon.png")
+		if len(iconPNG) > 0 {
+			os.WriteFile(iconPath, iconPNG, 0644)
+			defer os.Remove(iconPath)
+		}
+		ps := fmt.Sprintf(
+			`Add-Type -AssemblyName System.Windows.Forms; `+
+				`$iconPath = '%s'; `+
+				`$icon = if (Test-Path $iconPath) { `+
+				`[System.Drawing.Icon]::FromHandle([System.Drawing.Bitmap]::FromFile($iconPath).GetHicon()) } `+
+				`else { [System.Drawing.SystemIcons]::Information }; `+
+				`$n = New-Object System.Windows.Forms.NotifyIcon; `+
+				`$n.Icon = $icon; `+
+				`$n.BalloonTipTitle = '%s'; `+
+				`$n.BalloonTipText = '%s'; `+
+				`$n.Visible = $true; `+
+				`$n.ShowBalloonTip(3000); `+
+				`Start-Sleep -Seconds 3; `+
+				`$n.Dispose(); `+
+				`if ($icon -ne [System.Drawing.SystemIcons]::Information) { $icon.Dispose() }`,
+			strings.ReplaceAll(iconPath, "'", "''"),
+			strings.ReplaceAll(title, "'", "''"),
+			strings.ReplaceAll(message, "'", "''"),
+		)
+		if err := exec.Command("powershell", "-NoProfile", "-Sta", "-Command", ps).Run(); err != nil {
+			log.Printf("[notif] PowerShell notification failed: %v", err)
+		}
 	}
 }
 
