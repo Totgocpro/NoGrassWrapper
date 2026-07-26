@@ -507,6 +507,16 @@ func (s *Storage) Snapshot() *Snapshot {
 		}
 	}
 
+	// Copy today's hardware stats into the aggregated total for PCDyingScore
+	if today, ok := s.data.DailyRecords[time.Now().Format("2006-01-02")]; ok {
+		total.CPUAvg = today.CPUAvg
+		total.CPUSamples = today.CPUSamples
+		total.RAMAvg = today.RAMAvg
+		total.RAMSamples = today.RAMSamples
+		total.GPUAvg = today.GPUAvg
+		total.GPUSamples = today.GPUSamples
+	}
+
 	var lastGrassDay string
 	for date, day := range s.data.DailyRecords {
 		if day.ActiveSeconds < 7200 {

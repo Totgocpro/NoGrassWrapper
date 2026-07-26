@@ -71,26 +71,26 @@ func (d *DailyRecord) PCScore(streak int) int {
 	return int(score)
 }
 
-// PCDyingScore returns the average hardware stress (CPU + RAM + GPU / 3).
+// PCDyingScore returns a weighted hardware stress score (CPU=50%, RAM=35%, GPU=15%).
 func (d *DailyRecord) PCDyingScore() float64 {
-	total := 0.0
-	count := 0
+	weighted := 0.0
+	totalWeight := 0.0
 	if d.CPUSamples > 0 {
-		total += d.CPUAvg
-		count++
+		weighted += d.CPUAvg * 0.50
+		totalWeight += 0.50
 	}
 	if d.RAMSamples > 0 {
-		total += d.RAMAvg
-		count++
+		weighted += d.RAMAvg * 0.35
+		totalWeight += 0.35
 	}
 	if d.GPUSamples > 0 {
-		total += d.GPUAvg
-		count++
+		weighted += d.GPUAvg * 0.15
+		totalWeight += 0.15
 	}
-	if count == 0 {
+	if totalWeight == 0 {
 		return 0
 	}
-	return total / float64(count)
+	return weighted / totalWeight
 }
 
 // formatScore formats a number in monetary style (1.2k, 3.4M, etc.).
