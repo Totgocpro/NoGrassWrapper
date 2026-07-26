@@ -446,6 +446,22 @@ type Snapshot struct {
 	Username      string
 	AvatarPath    string
 	LastGrassDay  string
+	WeekAvg       int64 // average active seconds/day this week
+	WeekChange    int   // percentage change vs previous week
+}
+
+func weekBounds(t time.Time) (monday time.Time, sunday time.Time) {
+	weekday := t.Weekday()
+	if weekday == time.Sunday {
+		weekday = 7
+	}
+	monday = t.AddDate(0, 0, -(int(weekday) - 1))
+	sunday = monday.AddDate(0, 0, 6)
+	return
+}
+
+func parseDate(dateStr string) (time.Time, error) {
+	return time.Parse("2006-01-02", dateStr)
 }
 
 func (s *Storage) Snapshot() *Snapshot {
@@ -488,6 +504,42 @@ func (s *Storage) Snapshot() *Snapshot {
 		lastGrassDay = "Never"
 	}
 
+	now := time.Now()
+	thisMon, thisSun := weekBounds(now)
+	lastMon := thisMon.AddDate(0, 0, -7)
+	lastSun := thisMon.AddDate(0, 0, -1)
+
+	var thisTotal, thisDays int64
+	var lastTotal, lastDays int64
+
+	for date, day := range s.data.DailyRecords {
+		t, err := parseDate(date)
+		if err != nil {
+			continue
+		}
+		if !t.Before(thisMon) && !t.After(thisSun) {
+			thisTotal += day.ActiveSeconds
+			thisDays++
+		}
+		if !t.Before(lastMon) && !t.After(lastSun) {
+			lastTotal += day.ActiveSeconds
+			lastDays++
+		}
+	}
+
+	var weekAvg int64
+	if thisDays > 0 {
+		weekAvg = thisTotal / thisDays
+	}
+
+	var weekChange int
+	if lastDays > 0 {
+		lastAvg := lastTotal / lastDays
+		if lastAvg > 0 {
+			weekChange = int(((weekAvg - lastAvg) * 100) / lastAvg)
+		}
+	}
+
 	return &Snapshot{
 		Data:          total,
 		Streak:        s.data.Streak,
@@ -495,6 +547,8 @@ func (s *Storage) Snapshot() *Snapshot {
 		Username:      s.data.Username,
 		AvatarPath:    s.data.AvatarPath,
 		LastGrassDay:  lastGrassDay,
+		WeekAvg:       weekAvg,
+		WeekChange:    weekChange,
 	}
 }
 

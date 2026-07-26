@@ -102,7 +102,7 @@ var appColors = []color.RGBA{
 }
 
 // GenerateBytes generates the PNG image and returns it as bytes.
-func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string) ([]byte, error) {
+func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int) ([]byte, error) {
 	dc := gg.NewContext(w.width, w.height)
 
 	w.drawBackground(dc)
@@ -112,7 +112,7 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 	score := data.PCScore(streak)
 	grade := Grade(score)
 	tier := Tier(score, float64(data.ActiveSeconds)/3600.0)
-	w.drawStats(dc, data, streak, longestStreak, score, grade, tier, lastGrassDay)
+	w.drawStats(dc, data, streak, longestStreak, score, grade, tier, lastGrassDay, weekAvg, weekChange)
 	w.drawAchievements(dc, achievements)
 	w.drawAppBars(dc, data)
 	w.drawFooter(dc, streak, longestStreak, score, data.PCDyingScore())
@@ -125,8 +125,8 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 }
 
 // Generate creates a PNG image at the given path with usage stats.
-func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string) error {
-	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay)
+func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int) error {
+	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange)
 	if err != nil {
 		return err
 	}
@@ -197,8 +197,12 @@ func (w *WrapperImage) drawHeader(dc *gg.Context, username string) {
 	dc.Stroke()
 }
 
-func (w *WrapperImage) drawStats(dc *gg.Context, today *DailyRecord, streak, longestStreak, score int, grade, tier, lastGrassDay string) {
+func (w *WrapperImage) drawStats(dc *gg.Context, today *DailyRecord, streak, longestStreak, score int, grade, tier, lastGrassDay string, weekAvg int64, weekChange int) {
 	// Stats cards
+	changeSign := "+"
+	if weekChange < 0 {
+		changeSign = ""
+	}
 	stats := []struct {
 		Label string
 		Value string
@@ -208,6 +212,7 @@ func (w *WrapperImage) drawStats(dc *gg.Context, today *DailyRecord, streak, lon
 		{"Streak", fmt.Sprintf("%d days", streak), fmt.Sprintf("best: %d", longestStreak)},
 		{"Score", formatScore(score), fmt.Sprintf("Grade %s · %s", grade, tier)},
 		{"Last Touched Grass", lastGrassDay, "day with <2h active"},
+		{"Daily Avg (Week)", formatDuration(weekAvg), fmt.Sprintf("%s%d%% vs last week", changeSign, weekChange)},
 	}
 
 	cardW := 170.0

@@ -180,7 +180,7 @@ func (t *Tray) generateAndCopy() {
 	achievements := checkAchievements(snap.Data, snap.Streak, records)
 
 	renderer := NewWrapperImage()
-	imgBytes, err := renderer.GenerateBytes(snap.Data, snap.Streak, snap.LongestStreak, avatarPath, achievements, snap.Username, snap.LastGrassDay)
+	imgBytes, err := renderer.GenerateBytes(snap.Data, snap.Streak, snap.LongestStreak, avatarPath, achievements, snap.Username, snap.LastGrassDay, snap.WeekAvg, snap.WeekChange)
 	if err != nil {
 		log.Printf("[tray] generate error: %v", err)
 		return
