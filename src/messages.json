@@ -1,14 +1,46 @@
 {
   "messages": [
     {
+      "min_score": 1000000,
+      "messages": [
+        "You have transcended humanity",
+        "The Matrix has you, Neo",
+        "Your chair has achieved sentience",
+        "The sun is a myth your ancestors believed in",
+        "You're not a gamer, you're a digital deity",
+        "I think you ARE the computer now",
+        "If I could turn this score into money, I'd be a billionaire (which isn't the case, btw)."
+      ]
+    },
+    {
+      "min_score": 100000,
+      "messages": [
+        "The grass is a loading screen",
+        "You've unlocked the 'No Life' achievement (again)",
+        "Your bed frame filed a missing person report",
+        "Doctor: 'You have 3 days to live' — You: 'Speedrun any%'",
+        "You and your PC are in a committed relationship",
+        "The last time you touched grass, it was 8-bit"
+      ]
+    },
+    {
+      "min_score": 50000,
+      "messages": [
+        "The government wants to know your location",
+        "You are now a permanent fixture in this room",
+        "Your family is planning an intervention",
+        "Cobwebs grow faster than your productivity",
+        "Your Steam library has more hours than your life"
+      ]
+    },
+    {
       "min_score": 10000,
       "messages": [
         "I should probably go outside",
         "My only cardio is scrolling",
         "The sunlight is just a rumor",
         "I'm not procrastinating, I'm optimizing",
-        "My gaming chair has a permanent indent",
-        "If I could turn this score into money, I'd be a billionaire (which isn't the case, btw)."
+        "My gaming chair has a permanent indent"
       ]
     },
     {
