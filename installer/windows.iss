@@ -91,11 +91,15 @@ begin
     Username := UsernamePage.Values[0];
     AvatarPath := AvatarPage.Values[0];
 
+    // Escape quotes for JSON
+    StringChange(Username, '"', '\"');
+    StringChange(AvatarPath, '"', '\"');
+
     // Build minimal JSON with username and avatar_path
     Json := '{' +
       '"version":1,' +
-      '"username":"' + StringChange(Username, '"', '\"') + '",' +
-      '"avatar_path":"' + StringChange(AvatarPath, '"', '\"') + '",' +
+      '"username":"' + Username + '",' +
+      '"avatar_path":"' + AvatarPath + '",' +
       '"daily_records":{},' +
       '"current_day":"",' +
       '"current_app":"",' +
