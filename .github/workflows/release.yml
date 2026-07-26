@@ -87,11 +87,13 @@ jobs:
       - name: Build Windows installer (Windows only)
         if: matrix.goos == 'windows'
         shell: bash
+        env:
+          MSYS2_ARG_CONV_EXCL: "*"
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           APPVER="${{ steps.version.outputs.APP_VERSION_STRIP }}"
           cp "nograsswrapper-${VERSION}-windows-amd64.exe" nograsswrapper.exe
-          iscc /dMyAppVersion="${APPVER}" installer/windows.iss
+          iscc "/dMyAppVersion=${APPVER}" installer/windows.iss
 
       - name: Rename installer with version
         if: matrix.goos == 'windows'
