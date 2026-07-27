@@ -9,7 +9,10 @@ import (
 
 func main() {
 	os.Setenv("LIBAPPINDICATOR_DISABLE_DEPRECATION_WARNINGS", "1")
-	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	if err := InitLogging(); err != nil {
+		log.Fatalf("[app] logging init: %v", err)
+	}
 	log.Println("[app] NoGrassWrapper starting...")
 
 	// Initialize storage
@@ -17,6 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("[app] storage init: %v", err)
 	}
+	defer RecoverCrash(store)
 
 	// Initialize tracker
 	tracker := NewTracker(store)
