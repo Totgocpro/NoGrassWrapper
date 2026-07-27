@@ -99,28 +99,57 @@ func (s *Storage) load() error {
 
 // recalculateStreak recomputes streak and longestStreak from daily records.
 func (s *Storage) recalculateStreak() {
+	today := time.Now().Format("2006-01-02")
+
+	streak := 0
+	checkDate := time.Now().AddDate(0, 0, -1)
+	for {
+		dateStr := checkDate.Format("2006-01-02")
+		day, ok := s.data.DailyRecords[dateStr]
+		if !ok || day.TotalSeconds == 0 {
+			break
+		}
+		streak++
+		checkDate = checkDate.AddDate(0, 0, -1)
+	}
+
+	// Include today if it already has activity
+	if d, ok := s.data.DailyRecords[today]; ok && d.TotalSeconds > 0 {
+		streak++
+	}
+
+	s.data.Streak = streak
+
 	dates := make([]string, 0, len(s.data.DailyRecords))
 	for date := range s.data.DailyRecords {
 		dates = append(dates, date)
 	}
-	sort.Strings(dates) // oldest first
+	sort.Strings(dates)
 
-	currentRun := 0
 	longestRun := 0
+	currentRun := 0
+	var prevDate string
 
 	for _, date := range dates {
 		day := s.data.DailyRecords[date]
 		if day.TotalSeconds > 0 {
+			if prevDate != "" {
+				prevTime, _ := time.Parse("2006-01-02", prevDate)
+				currTime, _ := time.Parse("2006-01-02", date)
+				if currTime.Sub(prevTime).Hours() > 30 {
+					currentRun = 0
+				}
+			}
 			currentRun++
 			if currentRun > longestRun {
 				longestRun = currentRun
 			}
+			prevDate = date
 		} else {
 			currentRun = 0
 		}
 	}
 
-	s.data.Streak = currentRun
 	s.data.LongestStreak = longestRun
 }
 
@@ -265,9 +294,8 @@ func (s *Storage) RecordGPUSample(pct float64) {
 }
 
 func (s *Storage) updateStreakLocked() {
-	yesterday := time.Now().Add(-24 * time.Hour).Format("2006-01-02")
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 
-	// Only increment streak if yesterday had activity
 	if d, ok := s.data.DailyRecords[yesterday]; ok && d.TotalSeconds > 0 {
 		s.data.Streak++
 	} else {
@@ -589,9 +617,5 @@ func (s *Storage) Snapshot() *Snapshot {
 
 // Close saves data before shutting down.
 func (s *Storage) Close() error {
-	// Update streak on close
-	s.mu.Lock()
-	s.updateStreakLocked()
-	s.mu.Unlock()
 	return s.Save()
 }
