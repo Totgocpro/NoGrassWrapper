@@ -154,8 +154,9 @@ func sanitizeAppName(title string) string {
 
 // getGPUPercent tries to read GPU utilization via nvidia-smi or platform fallbacks.
 func getGPUPercent() float64 {
-	// NVIDIA (cross-platform)
-	out, err := exec.Command("nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits").Output()
+	cmd := exec.Command("nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits")
+	hideWindow(cmd)
+	out, err := cmd.Output()
 	if err == nil {
 		s := strings.TrimSpace(string(out))
 		lines := strings.Split(s, "\n")

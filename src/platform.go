@@ -24,5 +24,6 @@ func isWayland() bool {
 // execCommand runs a command with arguments, ignoring output.
 func execCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
+	hideWindow(cmd)
 	return cmd.Start()
 }

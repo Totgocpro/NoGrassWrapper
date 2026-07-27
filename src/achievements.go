@@ -191,7 +191,9 @@ func sendNotification(title, message string) {
 			strings.ReplaceAll(title, "'", "''"),
 			strings.ReplaceAll(message, "'", "''"),
 		)
-		if err := exec.Command("powershell", "-NoProfile", "-Sta", "-Command", ps).Run(); err != nil {
+		cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Sta", "-Command", ps)
+		hideWindow(cmd)
+		if err := cmd.Run(); err != nil {
 			log.Printf("[notif] PowerShell notification failed: %v", err)
 		}
 	}
