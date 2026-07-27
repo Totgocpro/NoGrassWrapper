@@ -203,8 +203,8 @@ func (s *Storage) RecordTick(app string, afk bool) error {
 
 	today := time.Now().Format("2006-01-02")
 
-	// Day rollover
-	if s.data.CurrentDay != "" && s.data.CurrentDay != today {
+	rollover := s.data.CurrentDay != "" && s.data.CurrentDay != today
+	if rollover {
 		s.updateStreakLocked()
 	}
 	s.data.CurrentDay = today
@@ -219,6 +219,18 @@ func (s *Storage) RecordTick(app string, afk bool) error {
 	}
 
 	day.TotalSeconds++
+
+	if !rollover && day.TotalSeconds == 1 && s.data.Streak == 0 {
+		yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+		if d, ok := s.data.DailyRecords[yesterday]; ok && d.TotalSeconds > 0 {
+			s.data.Streak = 2
+		} else {
+			s.data.Streak = 1
+		}
+		if s.data.Streak > s.data.LongestStreak {
+			s.data.LongestStreak = s.data.Streak
+		}
+	}
 
 	if afk {
 		day.AFKSeconds++
