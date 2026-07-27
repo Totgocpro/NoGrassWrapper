@@ -62,6 +62,7 @@ func checkAchievements(total *DailyRecord, streak int, records map[string]*Daily
 	hasLongActiveDay := false
 	hasDyingPC := false
 	hasHighRAM := false
+	hasUnemployed := false
 
 	for date, day := range records {
 		appsInDay := len(day.Apps)
@@ -84,6 +85,10 @@ func checkAchievements(total *DailyRecord, streak int, records map[string]*Daily
 
 		if day.ActiveSeconds >= 21600 && day.AFKSeconds < 600 {
 			hasLongActiveDay = true
+		}
+
+		if day.ActiveSeconds >= 86400 {
+			hasUnemployed = true
 		}
 
 		if day.CPUSamples > 0 && day.CPUAvg > 70 {
@@ -109,7 +114,7 @@ func checkAchievements(total *DailyRecord, streak int, records map[string]*Daily
 		case "forget_the_toilets":
 			unlocked = hasLongActiveDay
 		case "unemployed":
-			unlocked = total.TotalSeconds >= 86400
+			unlocked = hasUnemployed
 		case "button_masher":
 			unlocked = uniqueApps >= 10
 		case "multitasker":
