@@ -132,4 +132,4 @@ begin
     SaveStringToFile(ConfigFile, Json, False);
   end;
 end;
-end;
+end.
