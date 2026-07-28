@@ -78,7 +78,7 @@ type WrapperImage struct {
 func NewWrapperImage() *WrapperImage {
 	return &WrapperImage{
 		width:  1000,
-		height: 800,
+		height: 1050,
 	}
 }
 
@@ -103,7 +103,7 @@ var appColors = []color.RGBA{
 }
 
 // GenerateBytes generates the PNG image and returns it as bytes.
-func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string) ([]byte, error) {
+func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap) ([]byte, error) {
 	dc := gg.NewContext(w.width, w.height)
 
 	w.drawBackground(dc)
@@ -116,6 +116,7 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 	w.drawStats(dc, data, streak, longestStreak, score, grade, tier, lastGrassDay, weekAvg, weekChange)
 	w.drawAchievements(dc, achievements)
 	w.drawAppBars(dc, data, hiddenApps)
+	w.drawHeatmap(dc, heatmap)
 	w.drawFooter(dc, streak, longestStreak, score, data.PCDyingScore())
 
 	var buf bytes.Buffer
@@ -126,8 +127,8 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 }
 
 // Generate creates a PNG image at the given path with usage stats.
-func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string) error {
-	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps)
+func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap) error {
+	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps, heatmap)
 	if err != nil {
 		return err
 	}
@@ -397,6 +398,112 @@ func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApp
 	}
 }
 
+func heatColor(intensity float64) (uint8, uint8, uint8) {
+	if intensity <= 0 {
+		return 15, 25, 15
+	}
+	if intensity < 0.5 {
+		t := intensity / 0.5
+		r := uint8(20 + 130*t)
+		g := uint8(40 + 200*t)
+		b := uint8(10 * (1 - t))
+		return r, g, b
+	}
+	t := (intensity - 0.5) / 0.5
+	r := uint8(150 + 105*t)
+	g := uint8(240 - 210*t)
+	b := uint8(0)
+	return r, g, b
+}
+
+func (w *WrapperImage) drawHeatmap(dc *gg.Context, hm ActivityHeatmap) {
+	var maxVal int64
+	for dow := 0; dow < 7; dow++ {
+		for h := 0; h < 24; h++ {
+			if hm[dow][h] > maxVal {
+				maxVal = hm[dow][h]
+			}
+		}
+	}
+
+	titleY := 565.0
+	dc.SetColor(color.RGBA{200, 200, 230, 255})
+	fontFaceBold(dc, 16)
+	dc.DrawStringAnchored("Activity Heatmap (Day × Hour)", float64(w.width)/2, titleY, 0.5, 0.5)
+
+	if maxVal == 0 {
+		fontFace(dc, 12)
+		dc.SetColor(color.RGBA{120, 120, 160, 255})
+		dc.DrawStringAnchored("No hourly data yet — start tracking to see your activity patterns", float64(w.width)/2, titleY+30, 0.5, 0.5)
+		return
+	}
+
+	cellW := 28.0
+	cellH := 22.0
+	gap := 3.0
+	startX := 120.0
+	startY := 595.0
+
+	days := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+
+	fontFace(dc, 11)
+	for i, day := range days {
+		y := startY + float64(i)*(cellH+gap) + cellH/2
+		dc.SetColor(color.RGBA{180, 180, 210, 255})
+		dc.DrawStringAnchored(day, startX-8, y, 1, 0.5)
+	}
+
+	fontFace(dc, 8)
+	for h := 0; h < 24; h++ {
+		x := startX + float64(h)*(cellW+gap) + cellW/2
+		dc.SetColor(color.RGBA{160, 160, 190, 255})
+		dc.DrawStringAnchored(fmt.Sprintf("%02d", h), x, startY-8, 0.5, 0.5)
+	}
+
+	for dow := 0; dow < 7; dow++ {
+		for h := 0; h < 24; h++ {
+			x := startX + float64(h)*(cellW+gap)
+			y := startY + float64(dow)*(cellH+gap)
+
+			intensity := float64(hm[dow][h]) / float64(maxVal)
+			r, g, b := heatColor(intensity)
+
+			dc.SetColor(color.RGBA{r, g, b, 255})
+			dc.DrawRectangle(x, y, cellW, cellH)
+			dc.Fill()
+
+			dc.SetColor(color.RGBA{30, 30, 50, 120})
+			dc.SetLineWidth(1)
+			dc.DrawRectangle(x, y, cellW, cellH)
+			dc.Stroke()
+		}
+	}
+
+	// Vertical color legend (right side)
+	legendX := startX + 24*(cellW+gap) + 10
+	legendY := startY
+	legendW := 16.0
+	legendH := 7*(cellH+gap)
+
+	fontFace(dc, 10)
+	dc.SetColor(color.RGBA{140, 140, 175, 255})
+	dc.DrawStringAnchored("Low", legendX+legendW/2, legendY+legendH+10, 0.5, 0.5)
+	dc.DrawStringAnchored("High", legendX+legendW/2, legendY-10, 0.5, 0.5)
+
+	for py := 0; py < int(legendH); py++ {
+		t := 1 - float64(py)/legendH
+		r, g, b := heatColor(t)
+		dc.SetColor(color.RGBA{r, g, b, 255})
+		dc.DrawRectangle(legendX, legendY+float64(py), legendW, 1)
+		dc.Fill()
+	}
+
+	dc.SetColor(color.RGBA{60, 60, 90, 180})
+	dc.SetLineWidth(1)
+	dc.DrawRectangle(legendX, legendY, legendW, legendH)
+	dc.Stroke()
+}
+
 func (w *WrapperImage) drawAvatar(dc *gg.Context, avatarPath string) {
 	if avatarPath == "" {
 		return
@@ -434,7 +541,7 @@ func (w *WrapperImage) drawAvatar(dc *gg.Context, avatarPath string) {
 
 func (w *WrapperImage) drawFooter(dc *gg.Context, streak, longestStreak, score int, dyingScore float64) {
 	// Bottom panel with gradient
-	panelY := 600.0
+	panelY := 820.0
 	panelH := 120.0
 	panelPad := 60.0
 	grad := gg.NewLinearGradient(panelPad, panelY, float64(w.width)-panelPad, panelY)
@@ -489,12 +596,12 @@ func (w *WrapperImage) drawFooter(dc *gg.Context, streak, longestStreak, score i
 	// Separator
 	dc.SetColor(color.RGBA{60, 60, 90, 255})
 	dc.SetLineWidth(1)
-	dc.DrawLine(60, 745, float64(w.width)-60, 745)
+	dc.DrawLine(60, 970, float64(w.width)-60, 970)
 	dc.Stroke()
 
 	fontFace(dc, 10)
 	dc.SetColor(color.RGBA{100, 100, 140, 255})
-	dc.DrawStringAnchored(fmt.Sprintf("Generated %s · %s · NoGrassWrapper %s", time.Now().Format("2006-01-02 15:04"), "github.com/Totgocpro/NoGrassWrapper", Version), float64(w.width)/2, 770, 0.5, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("Generated %s · %s · NoGrassWrapper %s", time.Now().Format("2006-01-02 15:04"), "github.com/Totgocpro/NoGrassWrapper", Version), float64(w.width)/2, 995, 0.5, 0.5)
 }
 
 // shortAppName shortens a window/app name for display in the bar chart.

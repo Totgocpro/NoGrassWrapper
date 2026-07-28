@@ -12,6 +12,9 @@ type AppUsage struct {
 	LastSeen     time.Time `json:"last_seen"`
 }
 
+// ActivityHeatmap stores activity intensity per day-of-week (Mon=0…Sun=6) per hour (0-23).
+type ActivityHeatmap [7][24]int64
+
 // DailyRecord holds all usage data for one calendar day.
 type DailyRecord struct {
 	Date            string              `json:"date"` // YYYY-MM-DD
@@ -19,6 +22,7 @@ type DailyRecord struct {
 	TotalSeconds    int64               `json:"total_seconds"`
 	ActiveSeconds   int64               `json:"active_seconds"`
 	AFKSeconds      int64               `json:"afk_seconds"`
+	HourlyActive    [24]int64           `json:"hourly_active"`
 	CPUAvg          float64             `json:"cpu_avg"`
 	CPUSamples      int64               `json:"cpu_samples"`
 	RAMAvg          float64             `json:"ram_avg"`

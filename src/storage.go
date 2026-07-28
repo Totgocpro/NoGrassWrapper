@@ -236,6 +236,8 @@ func (s *Storage) RecordTick(app string, afk bool) error {
 		day.AFKSeconds++
 	} else {
 		day.ActiveSeconds++
+		hour := time.Now().Hour()
+		day.HourlyActive[hour]++
 		if app != "" {
 			a, ok := day.Apps[app]
 			if !ok {
@@ -448,6 +450,7 @@ func (s *Storage) AllDailyRecords() map[string]*DailyRecord {
 			TotalSeconds:  day.TotalSeconds,
 			ActiveSeconds: day.ActiveSeconds,
 			AFKSeconds:    day.AFKSeconds,
+			HourlyActive:  day.HourlyActive,
 			CPUAvg:        day.CPUAvg,
 			CPUSamples:    day.CPUSamples,
 			RAMAvg:        day.RAMAvg,
@@ -466,6 +469,25 @@ func (s *Storage) AllDailyRecords() map[string]*DailyRecord {
 		records[date] = cp
 	}
 	return records
+}
+
+// ActivityHeatmap aggregates active seconds per day-of-week (Mon=0…Sun=6) × hour (0-23).
+func (s *Storage) ActivityHeatmap() ActivityHeatmap {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var hm ActivityHeatmap
+	for date, day := range s.data.DailyRecords {
+		t, err := parseDate(date)
+		if err != nil {
+			continue
+		}
+		dow := (int(t.Weekday()) + 6) % 7 // Mon=0, Tue=1, …, Sun=6
+		for hour, secs := range day.HourlyActive {
+			hm[dow][hour] += secs
+		}
+	}
+	return hm
 }
 
 // TotalData aggregates all daily records into a single total record.

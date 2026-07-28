@@ -178,9 +178,10 @@ func (t *Tray) generateAndCopy() {
 	}
 	records := t.store.AllDailyRecords()
 	achievements := checkAchievements(snap.Data, snap.Streak, records)
+	heatmap := t.store.ActivityHeatmap()
 
 	renderer := NewWrapperImage()
-	imgBytes, err := renderer.GenerateBytes(snap.Data, snap.Streak, snap.LongestStreak, avatarPath, achievements, snap.Username, snap.LastGrassDay, snap.WeekAvg, snap.WeekChange, snap.HiddenApps)
+	imgBytes, err := renderer.GenerateBytes(snap.Data, snap.Streak, snap.LongestStreak, avatarPath, achievements, snap.Username, snap.LastGrassDay, snap.WeekAvg, snap.WeekChange, snap.HiddenApps, heatmap)
 	if err != nil {
 		log.Printf("[tray] generate error: %v", err)
 		return
