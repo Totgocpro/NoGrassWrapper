@@ -424,15 +424,17 @@ func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApp
 			})
 
 			var shownSubs []subEntry
-			var otherSecs int64
+			var shownTotal int64
 			for _, s := range subs {
 				if len(shownSubs) < maxSubPerApp && s.Seconds >= 60 {
 					shownSubs = append(shownSubs, s)
-				} else {
-					otherSecs += s.Seconds
+					shownTotal += s.Seconds
 				}
 			}
-			if otherSecs > 0 {
+			// "other" = total browser time minus shown sub-apps
+			// This captures both unidentified time and below-threshold sites
+			otherSecs := app.Seconds - shownTotal
+			if otherSecs > 60 {
 				shownSubs = append(shownSubs, subEntry{Name: "other", Seconds: otherSecs})
 			}
 
