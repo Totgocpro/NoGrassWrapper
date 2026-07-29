@@ -600,18 +600,18 @@ func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApp
 
 func heatColor(intensity float64) (uint8, uint8, uint8) {
 	if intensity <= 0 {
-		return 15, 25, 15
+		return 18, 18, 35
 	}
 	if intensity < 0.5 {
 		t := intensity / 0.5
-		r := uint8(20 + 130*t)
-		g := uint8(40 + 200*t)
-		b := uint8(10 * (1 - t))
+		r := uint8(30 + 140*t)
+		g := uint8(50 + 210*t)
+		b := uint8(25 * (1 - t))
 		return r, g, b
 	}
 	t := (intensity - 0.5) / 0.5
-	r := uint8(150 + 105*t)
-	g := uint8(240 - 210*t)
+	r := uint8(170 + 85*t)
+	g := uint8(260 - 220*t)
 	b := uint8(0)
 	return r, g, b
 }
@@ -665,7 +665,14 @@ func (w *WrapperImage) drawHeatmap(dc *gg.Context, hm ActivityHeatmap) {
 			x := startX + float64(h)*(cellW+gap)
 			y := startY + float64(dow)*(cellH+gap)
 
-			intensity := float64(hm[dow][h]) / float64(maxVal)
+			val := hm[dow][h]
+			var intensity float64
+			if val > 0 {
+				intensity = float64(val) / float64(maxVal)
+				if intensity < 0.12 {
+					intensity = 0.12
+				}
+			}
 			r, g, b := heatColor(intensity)
 
 			dc.SetColor(color.RGBA{r, g, b, 255})
