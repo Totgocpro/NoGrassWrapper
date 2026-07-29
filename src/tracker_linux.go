@@ -22,6 +22,22 @@ func (d *osDetector) ActiveWindow() (string, error) {
 	return getX11ActiveWindow()
 }
 
+func (d *osDetector) ActiveWindowTitle() (string, error) {
+	if isWayland() {
+		return getWaylandWindowTitle()
+	}
+	// X11: get window title via xdotool
+	return getX11WindowTitle()
+}
+
+func getX11WindowTitle() (string, error) {
+	out, err := exec.Command("xdotool", "getactivewindow", "getwindowname").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 func getWaylandActiveWindow() (string, error) {
 	// Prefer class/process name over window title
 	if name, err := getWaylandAppClass(); err == nil {

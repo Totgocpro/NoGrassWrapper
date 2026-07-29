@@ -103,7 +103,7 @@ var appColors = []color.RGBA{
 }
 
 // GenerateBytes generates the PNG image and returns it as bytes.
-func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap) ([]byte, error) {
+func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap, splitBrowserURLs bool) ([]byte, error) {
 	dc := gg.NewContext(w.width, w.height)
 
 	w.drawBackground(dc)
@@ -115,7 +115,7 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 	tier := Tier(score, float64(data.ActiveSeconds)/3600.0)
 	w.drawStats(dc, data, streak, longestStreak, score, grade, tier, lastGrassDay, weekAvg, weekChange)
 	w.drawAchievements(dc, achievements)
-	w.drawAppBars(dc, data, hiddenApps)
+	w.drawAppBars(dc, data, hiddenApps, splitBrowserURLs)
 	w.drawHeatmap(dc, heatmap)
 	w.drawFooter(dc, streak, longestStreak, score, data.PCDyingScore())
 
@@ -127,8 +127,8 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 }
 
 // Generate creates a PNG image at the given path with usage stats.
-func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap) error {
-	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps, heatmap)
+func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap, splitBrowserURLs bool) error {
+	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps, heatmap, splitBrowserURLs)
 	if err != nil {
 		return err
 	}
@@ -296,27 +296,60 @@ func (w *WrapperImage) drawAchievements(dc *gg.Context, achievements []Achieveme
 	}
 }
 
-func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApps []string) {
-	// Build bar data
+type displayEntry struct {
+	Name     string
+	Seconds  int64
+	ColorIdx int
+	IsSub    bool
+}
+
+func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApps []string, splitURLs bool) {
+	type appData struct {
+		Usage *AppUsage
+		Name  string
+	}
+
+	merged := make(map[string]*appData)
+	for name, usage := range today.Apps {
+		display := shortAppName(name)
+		if existing, ok := merged[display]; ok {
+			existing.Usage.TotalSeconds += usage.TotalSeconds
+			if usage.LastSeen.After(existing.Usage.LastSeen) {
+				existing.Usage.LastSeen = usage.LastSeen
+			}
+			if splitURLs {
+				for subName, subApp := range usage.SubApps {
+					if existing.Usage.SubApps == nil {
+						existing.Usage.SubApps = make(map[string]*AppUsage)
+					}
+					if es, ok := existing.Usage.SubApps[subName]; ok {
+						es.TotalSeconds += subApp.TotalSeconds
+					} else {
+						existing.Usage.SubApps[subName] = &AppUsage{
+							Name:         subApp.Name,
+							TotalSeconds: subApp.TotalSeconds,
+						}
+					}
+				}
+			}
+		} else {
+			merged[display] = &appData{Name: display, Usage: usage}
+		}
+	}
+
 	type appEntry struct {
 		Name     string
 		Seconds  int64
 		ColorIdx int
-	}
-
-	merged := make(map[string]int64)
-	for name, usage := range today.Apps {
-		display := shortAppName(name)
-		merged[display] += usage.TotalSeconds
+		SubApps  map[string]*AppUsage
 	}
 
 	var apps []appEntry
 	i := 0
-	for name, sec := range merged {
-		if sec < 60 {
+	for name, ad := range merged {
+		if ad.Usage.TotalSeconds < 60 {
 			continue
 		}
-		// Filter out hidden apps (case-insensitive substring match)
 		skip := false
 		for _, hidden := range hiddenApps {
 			if strings.Contains(strings.ToLower(name), strings.ToLower(hidden)) {
@@ -327,74 +360,241 @@ func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApp
 		if skip {
 			continue
 		}
+		var subs map[string]*AppUsage
+		if splitURLs && len(ad.Usage.SubApps) > 0 {
+			subs = ad.Usage.SubApps
+		}
 		apps = append(apps, appEntry{
 			Name:     name,
-			Seconds:  sec,
+			Seconds:  ad.Usage.TotalSeconds,
 			ColorIdx: i,
+			SubApps:  subs,
 		})
 		i++
 	}
 
-	// Sort by usage descending
 	sort.Slice(apps, func(a, b int) bool {
 		return apps[a].Seconds > apps[b].Seconds
 	})
 
-	// Take top 8
-	const maxBars = 8
-	if len(apps) > maxBars {
-		apps = apps[:maxBars]
+	// Layout constants
+	barStartY := 230.0
+	barH := 30.0
+	subBarH := 18.0
+	barGap := 6.0
+	subBarGap := 4.0
+	barStartX := 520.0
+	barMaxW := 420.0
+	subIndent := 20.0
+	subFontSize := 10.0
+
+	maxAvailY := 550.0
+	maxSubPerApp := 3
+
+	// Build display entries with height-limit awareness
+	var entries []displayEntry
+	yPos := barStartY
+	for _, app := range apps {
+		if yPos >= maxAvailY {
+			break
+		}
+		mainH := barH + barGap
+		if yPos+mainH > maxAvailY {
+			break
+		}
+		entries = append(entries, displayEntry{
+			Name:     app.Name,
+			Seconds:  app.Seconds,
+			ColorIdx: app.ColorIdx,
+			IsSub:    false,
+		})
+		yPos += mainH
+
+		if len(app.SubApps) > 0 {
+			type subEntry struct {
+				Name    string
+				Seconds int64
+			}
+			var subs []subEntry
+			for subName, subApp := range app.SubApps {
+				subs = append(subs, subEntry{Name: subName, Seconds: subApp.TotalSeconds})
+			}
+			sort.Slice(subs, func(a, b int) bool {
+				return subs[a].Seconds > subs[b].Seconds
+			})
+
+			var shownSubs []subEntry
+			var otherSecs int64
+			for _, s := range subs {
+				if len(shownSubs) < maxSubPerApp && s.Seconds >= 60 {
+					shownSubs = append(shownSubs, s)
+				} else {
+					otherSecs += s.Seconds
+				}
+			}
+			if otherSecs > 0 {
+				shownSubs = append(shownSubs, subEntry{Name: "other", Seconds: otherSecs})
+			}
+
+			for _, s := range shownSubs {
+				subH := subBarH + subBarGap
+				if yPos+subH > maxAvailY {
+					break
+				}
+				entries = append(entries, displayEntry{
+					Name:     s.Name,
+					Seconds:  s.Seconds,
+					ColorIdx: app.ColorIdx,
+					IsSub:    true,
+				})
+				yPos += subH
+			}
+		}
 	}
 
 	dc.SetColor(color.RGBA{200, 200, 230, 255})
 	fontFaceBold(dc, 16)
 	dc.DrawStringAnchored("Top Applications (All Time)", 740, 205, 0.5, 0.5)
 
-	if len(apps) == 0 {
+	if len(entries) == 0 {
 		fontFace(dc, 14)
 		dc.SetColor(color.RGBA{120, 120, 160, 255})
 		dc.DrawStringAnchored("No data yet", 740, 250, 0.5, 0.5)
 		return
 	}
 
-	barStartY := 230.0
-	barH := 30.0
-	barGap := 6.0
-	barStartX := 520.0
-	barMaxW := 420.0
-
-	maxSec := apps[0].Seconds
+	maxSec := entries[0].Seconds
 	if maxSec == 0 {
 		maxSec = 1
 	}
 
-	fontFace(dc, 11)
+	treeColor := color.RGBA{100, 100, 140, 180}
+	lineW := 1.0
+	treeX := barStartX + 8
+	minBgW := 120.0
+	y := barStartY
+	idx := 0
+	for idx < len(entries) {
+		entry := entries[idx]
 
-	for i, app := range apps {
-		y := barStartY + float64(i)*(barH+barGap)
-		pct := float64(app.Seconds) / float64(maxSec)
-		barW := pct * barMaxW
-		if barW < 30 {
-			barW = 30
+		isSub := entry.IsSub
+		height := barH
+		gap := barGap
+		x := barStartX
+		nameSize := 11.0
+		if isSub {
+			height = subBarH
+			gap = subBarGap
+			x += subIndent
+			nameSize = subFontSize
 		}
 
-		// Bar background
+		// Background width: fixed for mains, parent-proportional for subs
+		var barBgW, fillW float64
+		if isSub {
+			parentIdx := idx - 1
+			for parentIdx >= 0 && entries[parentIdx].IsSub {
+				parentIdx--
+			}
+			parentPct := float64(entries[parentIdx].Seconds) / float64(maxSec)
+			parentBgW := parentPct * barMaxW
+			if parentBgW < minBgW {
+				parentBgW = minBgW
+			}
+			barBgW = parentBgW - subIndent
+			if barBgW < minBgW {
+				barBgW = minBgW
+			}
+			subPct := float64(entry.Seconds) / float64(entries[parentIdx].Seconds)
+			fillW = subPct * barBgW
+			if fillW < 8 {
+				fillW = 8
+			}
+		} else {
+			barBgW = barMaxW
+			pct := float64(entry.Seconds) / float64(maxSec)
+			fillW = pct * barMaxW
+			if fillW < 20 {
+				fillW = 20
+			}
+		}
+
+		// Draw background
 		dc.SetColor(color.RGBA{30, 30, 55, 200})
-		dc.DrawRoundedRectangle(barStartX, y, barMaxW, barH, 5)
+		dc.DrawRoundedRectangle(x, y, barBgW, height, 4)
 		dc.Fill()
 
-		// Bar fill
-		clr := appColors[app.ColorIdx%len(appColors)]
+		// Draw fill bar
+		clr := appColors[entry.ColorIdx%len(appColors)]
+		if isSub {
+			clr = color.RGBA{clr.R, clr.G, clr.B, 140}
+		}
 		dc.SetColor(clr)
-		dc.DrawRoundedRectangle(barStartX, y, barW, barH, 5)
+		dc.DrawRoundedRectangle(x, y, fillW, height, 4)
 		dc.Fill()
 
-		// App name on bar (left)
-		dc.SetColor(color.RGBA{255, 255, 255, 220})
-		dc.DrawStringAnchored(app.Name, barStartX+6, y+barH/2, 0, 0.5)
+		// Tree lines for sub-groups (drawn before text)
+		if isSub && (idx == 0 || !entries[idx-1].IsSub) {
+			groupEnd := idx
+			for groupEnd < len(entries) && entries[groupEnd].IsSub {
+				groupEnd++
+			}
+			firstY := y
+			ty := y
+			var lastY float64
+			for i := idx; i < groupEnd; i++ {
+				lastY = ty + subBarH/2
+				ty += subBarH + subBarGap
+			}
+			dc.SetColor(treeColor)
+			dc.SetLineWidth(lineW)
+			dc.DrawLine(treeX, firstY, treeX, lastY)
+			dc.Stroke()
+			ty = y
+			for i := idx; i < groupEnd; i++ {
+				branchY := ty + subBarH/2
+				dc.DrawLine(treeX, branchY, treeX+8, branchY)
+				dc.Stroke()
+				ty += subBarH + subBarGap
+			}
+		}
 
-		// Duration text on bar (right)
-		dc.DrawStringAnchored(formatDuration(app.Seconds), barStartX+barW-6, y+barH/2, 1, 0.5)
+		// Text: time on the right, name on the left — both relative to background
+		timeStr := formatDuration(entry.Seconds)
+		timeX := x + barBgW - 6
+
+		// Draw time first (right-aligned at background's right edge, always)
+		fontFace(dc, nameSize)
+		dc.SetColor(color.RGBA{255, 255, 255, 220})
+		dc.DrawStringAnchored(timeStr, timeX, y+height/2, 1, 0.5)
+
+		// Name on the left, truncated to fit
+		nameLabel := entry.Name
+		labelX := x + 6
+		if isSub {
+			labelX += 10
+		}
+		availW := timeX - 10 - labelX
+		if availW < 20 {
+			availW = 20
+		}
+		// Approximate max chars based on font size
+		charW := 7.0
+		if isSub {
+			charW = 6.0
+		}
+		maxChars := int(availW / charW)
+		if maxChars < 3 {
+			maxChars = 3
+		}
+		if len(nameLabel) > maxChars {
+			nameLabel = nameLabel[:maxChars-2] + ".."
+		}
+		fontFace(dc, nameSize)
+		dc.DrawStringAnchored(nameLabel, labelX, y+height/2, 0, 0.5)
+
+		y += height + gap
+		idx++
 	}
 }
 

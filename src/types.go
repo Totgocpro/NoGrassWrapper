@@ -7,9 +7,10 @@ import (
 
 // AppUsage tracks time spent on a single application.
 type AppUsage struct {
-	Name         string    `json:"name"`
-	TotalSeconds int64     `json:"total_seconds"`
-	LastSeen     time.Time `json:"last_seen"`
+	Name         string              `json:"name"`
+	TotalSeconds int64               `json:"total_seconds"`
+	LastSeen     time.Time           `json:"last_seen"`
+	SubApps      map[string]*AppUsage `json:"sub_apps,omitempty"`
 }
 
 // ActivityHeatmap stores activity intensity per day-of-week (Mon=0…Sun=6) per hour (0-23).
@@ -33,16 +34,17 @@ type DailyRecord struct {
 
 // Store is the persistent data we save to disk.
 type Store struct {
-	Version       int                     `json:"version"`
-	DailyRecords  map[string]*DailyRecord `json:"daily_records"`
-	CurrentDay    string                  `json:"current_day"`
-	CurrentApp    string                  `json:"current_app"`
-	Streak               int                     `json:"streak"`
-	LongestStreak        int                     `json:"longest_streak"`
-	UnlockedAchievements []string                `json:"unlocked_achievements,omitempty"`
-	Username             string                  `json:"username,omitempty"`
-	AvatarPath           string                  `json:"avatar_path,omitempty"`
-	HiddenApps           []string                `json:"hidden_apps,omitempty"`
+	Version          int                     `json:"version"`
+	DailyRecords     map[string]*DailyRecord `json:"daily_records"`
+	CurrentDay       string                  `json:"current_day"`
+	CurrentApp       string                  `json:"current_app"`
+	Streak           int                     `json:"streak"`
+	LongestStreak    int                     `json:"longest_streak"`
+	UnlockedAchievements []string            `json:"unlocked_achievements,omitempty"`
+	Username         string                  `json:"username,omitempty"`
+	AvatarPath       string                  `json:"avatar_path,omitempty"`
+	HiddenApps       []string                `json:"hidden_apps,omitempty"`
+	SplitBrowserURLs bool                    `json:"split_browser_urls,omitempty"`
 }
 
 // PCScore calculates an unbounded "PC Usage Score" based on total data.

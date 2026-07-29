@@ -16,6 +16,10 @@ func newOSDetector() WindowDetector {
 }
 
 func (d *osDetector) ActiveWindow() (string, error) {
+	return d.ActiveWindowTitle()
+}
+
+func (d *osDetector) ActiveWindowTitle() (string, error) {
 	mod := windows.NewLazySystemDLL("user32.dll")
 	procGetForegroundWindow := mod.NewProc("GetForegroundWindow")
 	procGetWindowTextW := mod.NewProc("GetWindowTextW")

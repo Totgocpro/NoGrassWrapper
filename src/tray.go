@@ -181,7 +181,7 @@ func (t *Tray) generateAndCopy() {
 	heatmap := t.store.ActivityHeatmap()
 
 	renderer := NewWrapperImage()
-	imgBytes, err := renderer.GenerateBytes(snap.Data, snap.Streak, snap.LongestStreak, avatarPath, achievements, snap.Username, snap.LastGrassDay, snap.WeekAvg, snap.WeekChange, snap.HiddenApps, heatmap)
+	imgBytes, err := renderer.GenerateBytes(snap.Data, snap.Streak, snap.LongestStreak, avatarPath, achievements, snap.Username, snap.LastGrassDay, snap.WeekAvg, snap.WeekChange, snap.HiddenApps, heatmap, snap.SplitBrowserURLs)
 	if err != nil {
 		log.Printf("[tray] generate error: %v", err)
 		return

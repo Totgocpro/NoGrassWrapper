@@ -197,7 +197,8 @@ func (s *Storage) Save() error {
 }
 
 // RecordTick logs one second of activity for the given app name.
-func (s *Storage) RecordTick(app string, afk bool) error {
+// site is the sub-app identifier (e.g. domain name) when URL splitting is enabled.
+func (s *Storage) RecordTick(app, site string, afk bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -246,6 +247,20 @@ func (s *Storage) RecordTick(app string, afk bool) error {
 			}
 			a.TotalSeconds++
 			a.LastSeen = time.Now()
+
+			// Record sub-app (site) if provided
+			if site != "" {
+				if a.SubApps == nil {
+					a.SubApps = make(map[string]*AppUsage)
+				}
+				sub, ok := a.SubApps[site]
+				if !ok {
+					sub = &AppUsage{Name: site}
+					a.SubApps[site] = sub
+				}
+				sub.TotalSeconds++
+				sub.LastSeen = time.Now()
+			}
 		}
 	}
 
@@ -349,11 +364,22 @@ func (s *Storage) TodayData() *DailyRecord {
 		Apps:          make(map[string]*AppUsage),
 	}
 	for k, v := range day.Apps {
-		cp.Apps[k] = &AppUsage{
+		au := &AppUsage{
 			Name:         v.Name,
 			TotalSeconds: v.TotalSeconds,
 			LastSeen:     v.LastSeen,
 		}
+		if len(v.SubApps) > 0 {
+			au.SubApps = make(map[string]*AppUsage, len(v.SubApps))
+			for sk, sv := range v.SubApps {
+				au.SubApps[sk] = &AppUsage{
+					Name:         sv.Name,
+					TotalSeconds: sv.TotalSeconds,
+					LastSeen:     sv.LastSeen,
+				}
+			}
+		}
+		cp.Apps[k] = au
 	}
 	return cp
 }
@@ -418,6 +444,20 @@ func (s *Storage) SetAvatarPath(path string) {
 	s.data.AvatarPath = path
 }
 
+// GetSplitBrowserURLs returns whether URL splitting is enabled.
+func (s *Storage) GetSplitBrowserURLs() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.data.SplitBrowserURLs
+}
+
+// SetSplitBrowserURLs sets whether URL splitting is enabled.
+func (s *Storage) SetSplitBrowserURLs(v bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data.SplitBrowserURLs = v
+}
+
 // Streak returns the current streak.
 func (s *Storage) Streak() int {
 	s.mu.RLock()
@@ -460,11 +500,22 @@ func (s *Storage) AllDailyRecords() map[string]*DailyRecord {
 			Apps:          make(map[string]*AppUsage, len(day.Apps)),
 		}
 		for k, v := range day.Apps {
-			cp.Apps[k] = &AppUsage{
+			au := &AppUsage{
 				Name:         v.Name,
 				TotalSeconds: v.TotalSeconds,
 				LastSeen:     v.LastSeen,
 			}
+			if len(v.SubApps) > 0 {
+				au.SubApps = make(map[string]*AppUsage, len(v.SubApps))
+				for sk, sv := range v.SubApps {
+					au.SubApps[sk] = &AppUsage{
+						Name:         sv.Name,
+						TotalSeconds: sv.TotalSeconds,
+						LastSeen:     sv.LastSeen,
+					}
+				}
+			}
+			cp.Apps[k] = au
 		}
 		records[date] = cp
 	}
@@ -510,12 +561,38 @@ func (s *Storage) TotalData() *DailyRecord {
 				if app.LastSeen.After(existing.LastSeen) {
 					existing.LastSeen = app.LastSeen
 				}
+				// Aggregate sub-apps
+				for subName, subApp := range app.SubApps {
+					if existing.SubApps == nil {
+						existing.SubApps = make(map[string]*AppUsage)
+					}
+					if es, ok := existing.SubApps[subName]; ok {
+						es.TotalSeconds += subApp.TotalSeconds
+					} else {
+						existing.SubApps[subName] = &AppUsage{
+							Name:         subApp.Name,
+							TotalSeconds: subApp.TotalSeconds,
+							LastSeen:     subApp.LastSeen,
+						}
+					}
+				}
 			} else {
-				total.Apps[name] = &AppUsage{
+				cp := &AppUsage{
 					Name:         app.Name,
 					TotalSeconds: app.TotalSeconds,
 					LastSeen:     app.LastSeen,
 				}
+				if len(app.SubApps) > 0 {
+					cp.SubApps = make(map[string]*AppUsage, len(app.SubApps))
+					for subName, subApp := range app.SubApps {
+						cp.SubApps[subName] = &AppUsage{
+							Name:         subApp.Name,
+							TotalSeconds: subApp.TotalSeconds,
+							LastSeen:     subApp.LastSeen,
+						}
+					}
+				}
+				total.Apps[name] = cp
 			}
 		}
 	}
@@ -525,15 +602,16 @@ func (s *Storage) TotalData() *DailyRecord {
 
 // Snapshot returns all display data atomically under a single read lock.
 type Snapshot struct {
-	Data          *DailyRecord
-	Streak        int
-	LongestStreak int
-	Username      string
-	AvatarPath    string
-	LastGrassDay  string
-	WeekAvg       int64 // average active seconds/day this week
-	WeekChange    int   // percentage change vs previous week
-	HiddenApps    []string
+	Data             *DailyRecord
+	Streak           int
+	LongestStreak    int
+	Username         string
+	AvatarPath       string
+	LastGrassDay     string
+	WeekAvg          int64 // average active seconds/day this week
+	WeekChange       int   // percentage change vs previous week
+	HiddenApps       []string
+	SplitBrowserURLs bool
 }
 
 func weekBounds(t time.Time) (monday time.Time, sunday time.Time) {
@@ -568,12 +646,38 @@ func (s *Storage) Snapshot() *Snapshot {
 				if app.LastSeen.After(existing.LastSeen) {
 					existing.LastSeen = app.LastSeen
 				}
+				// Aggregate sub-apps
+				for subName, subApp := range app.SubApps {
+					if existing.SubApps == nil {
+						existing.SubApps = make(map[string]*AppUsage)
+					}
+					if es, ok := existing.SubApps[subName]; ok {
+						es.TotalSeconds += subApp.TotalSeconds
+					} else {
+						existing.SubApps[subName] = &AppUsage{
+							Name:         subApp.Name,
+							TotalSeconds: subApp.TotalSeconds,
+							LastSeen:     subApp.LastSeen,
+						}
+					}
+				}
 			} else {
-				total.Apps[name] = &AppUsage{
+				cp := &AppUsage{
 					Name:         app.Name,
 					TotalSeconds: app.TotalSeconds,
 					LastSeen:     app.LastSeen,
 				}
+				if len(app.SubApps) > 0 {
+					cp.SubApps = make(map[string]*AppUsage, len(app.SubApps))
+					for subName, subApp := range app.SubApps {
+						cp.SubApps[subName] = &AppUsage{
+							Name:         subApp.Name,
+							TotalSeconds: subApp.TotalSeconds,
+							LastSeen:     subApp.LastSeen,
+						}
+					}
+				}
+				total.Apps[name] = cp
 			}
 		}
 	}
@@ -637,15 +741,16 @@ func (s *Storage) Snapshot() *Snapshot {
 	}
 
 	return &Snapshot{
-		Data:          total,
-		Streak:        s.data.Streak,
-		LongestStreak: s.data.LongestStreak,
-		Username:      s.data.Username,
-		AvatarPath:    s.data.AvatarPath,
-		LastGrassDay:  lastGrassDay,
-		WeekAvg:       weekAvg,
-		WeekChange:    weekChange,
-		HiddenApps:    append([]string{}, s.data.HiddenApps...),
+		Data:             total,
+		Streak:           s.data.Streak,
+		LongestStreak:    s.data.LongestStreak,
+		Username:         s.data.Username,
+		AvatarPath:       s.data.AvatarPath,
+		LastGrassDay:     lastGrassDay,
+		WeekAvg:          weekAvg,
+		WeekChange:       weekChange,
+		HiddenApps:       append([]string{}, s.data.HiddenApps...),
+		SplitBrowserURLs: s.data.SplitBrowserURLs,
 	}
 }
 

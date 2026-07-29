@@ -61,7 +61,11 @@ func showSettingsDialog(store *Storage) {
 			b += "]"
 			hiddenJSON = b
 		}
-		fmt.Fprintf(w, `{"username":"%s","avatar":"%s","hidden_apps":%s}`, store.GetUsername(), strings.ReplaceAll(store.GetAvatarPath(), `\`, `\\`), hiddenJSON)
+		splitURLs := "false"
+		if store.GetSplitBrowserURLs() {
+			splitURLs = "true"
+		}
+		fmt.Fprintf(w, `{"username":"%s","avatar":"%s","hidden_apps":%s,"split_browser_urls":%s}`, store.GetUsername(), strings.ReplaceAll(store.GetAvatarPath(), `\`, `\\`), hiddenJSON, splitURLs)
 	})
 
 	mux.HandleFunc("/save", func(w http.ResponseWriter, r *http.Request) {
@@ -106,6 +110,10 @@ func showSettingsDialog(store *Storage) {
 			}
 		}
 		store.SetHiddenApps(hidden)
+
+		// Parse split browser URLs setting
+		splitURLs := r.FormValue("split_browser_urls")
+		store.SetSplitBrowserURLs(splitURLs == "true")
 
 		_ = store.Save()
 		w.Write([]byte("ok"))

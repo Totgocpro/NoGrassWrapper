@@ -182,6 +182,142 @@ func looksLikeWebTab(title string) bool {
 	return count >= 1
 }
 
+// extractSiteName extracts a site/domain name from a browser window title.
+// It returns the site name, or empty string if it cannot be determined.
+// The title is the full window title (e.g. "Netflix - Google Chrome").
+func extractSiteName(title string) string {
+	// Known browser identifiers that might appear in window titles
+	browserIDs := []string{
+		"google chrome", "chromium", "brave", "mozilla firefox",
+		"firefox", "safari", "edge", "opera", "vivaldi", "browser",
+	}
+
+	// Try to split on common separators and find browser part vs page title part
+	separators := []string{" — ", " – ", " | ", " - ", ": "}
+	for _, sep := range separators {
+		parts := strings.Split(title, sep)
+		if len(parts) < 2 {
+			continue
+		}
+		// Determine which part is the browser name
+		browserPart := -1
+		for i, part := range parts {
+			lowerPart := strings.ToLower(strings.TrimSpace(part))
+			for _, bid := range browserIDs {
+				if strings.Contains(lowerPart, bid) {
+					browserPart = i
+					break
+				}
+			}
+			if browserPart >= 0 {
+				break
+			}
+		}
+		if browserPart < 0 {
+			continue
+		}
+		// The other part(s) are the page title
+		var pageTitleParts []string
+		for i, part := range parts {
+			if i != browserPart {
+				pageTitleParts = append(pageTitleParts, strings.TrimSpace(part))
+			}
+		}
+		pageTitle := strings.Join(pageTitleParts, sep)
+		if pageTitle == "" {
+			continue
+		}
+		return cleanSiteName(pageTitle)
+	}
+
+	// If no separator found, try to find a domain in the entire title
+	if site := extractDomainFromString(title); site != "" {
+		return site
+	}
+
+	// Last resort: return the first meaningful word
+	return ""
+}
+
+// cleanSiteName tries to extract a clean site/domain name from a page title.
+func cleanSiteName(title string) string {
+	// Try to extract domain from the title first
+	if site := extractDomainFromString(title); site != "" {
+		return site
+	}
+
+	// Remove common page title suffixes
+	title = strings.TrimSpace(title)
+	title = strings.TrimSuffix(title, " - Home")
+	title = strings.TrimSuffix(title, " | Home")
+	title = strings.TrimSuffix(title, " - Dashboard")
+	title = strings.TrimSuffix(title, " | Dashboard")
+
+	// If the remaining title is short enough, use it as-is
+	if len(title) <= 25 {
+		if title != "" {
+			return title
+		}
+	}
+
+	// Use the first meaningful word(s)
+	words := strings.Fields(title)
+	if len(words) == 0 {
+		return ""
+	}
+	// Take up to 3 words, max 25 chars
+	result := words[0]
+	for i := 1; i < len(words) && i < 3 && len(result)+len(words[i])+1 <= 25; i++ {
+		result += " " + words[i]
+	}
+	if len(result) > 25 {
+		result = result[:22] + "..."
+	}
+	return result
+}
+
+// extractDomainFromString looks for a domain-like pattern in a string.
+func extractDomainFromString(s string) string {
+	lower := strings.ToLower(s)
+	tlds := []string{".com", ".org", ".net", ".io", ".fr", ".de", ".uk",
+		".app", ".dev", ".me", ".tv", ".co", ".ru", ".jp", ".cn",
+		".gov", ".edu", ".info", ".biz", ".xyz", ".club", ".online",
+		".social", "blog", ".wiki", ".news", ".app", ".dev"}
+	for _, tld := range tlds {
+		idx := strings.Index(lower, tld)
+		if idx < 0 {
+			continue
+		}
+		// Walk backwards to find domain start
+		start := idx
+		for start > 0 {
+			c := lower[start-1]
+			if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' {
+				start--
+			} else {
+				break
+			}
+		}
+		// Walk forward past the TLD
+		end := idx + len(tld)
+		for end < len(lower) {
+			c := lower[end]
+			if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' {
+				end++
+			} else {
+				break
+			}
+		}
+		domain := lower[start:end]
+		// Clean up the domain
+		domain = strings.TrimPrefix(domain, "www.")
+		if domain != "" && strings.Contains(domain, ".") {
+			return domain
+		}
+	}
+	return ""
+}
+
 // looksLikeFilename checks if a string looks like a filename rather than an app name.
 func looksLikeFilename(s string) bool {
 	exts := []string{".txt", ".md", ".go", ".py", ".js", ".ts", ".html", ".css",

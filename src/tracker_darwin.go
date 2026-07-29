@@ -16,7 +16,28 @@ func newOSDetector() WindowDetector {
 }
 
 func (d *osDetector) ActiveWindow() (string, error) {
-	// Use AppleScript to get the frontmost app's name + window title
+	out, err := d.getMacOSWindowInfo()
+	if err != nil {
+		return "", err
+	}
+	// Return just the app name
+	parts := strings.SplitN(out, " — ", 2)
+	return strings.TrimSpace(parts[0]), nil
+}
+
+func (d *osDetector) ActiveWindowTitle() (string, error) {
+	out, err := d.getMacOSWindowInfo()
+	if err != nil {
+		return "", err
+	}
+	parts := strings.SplitN(out, " — ", 2)
+	if len(parts) > 1 {
+		return strings.TrimSpace(parts[1]), nil
+	}
+	return out, nil
+}
+
+func (d *osDetector) getMacOSWindowInfo() (string, error) {
 	script := `
 tell application "System Events"
 	set frontApp to first application process whose frontmost is true

@@ -30,6 +30,9 @@ type Tracker struct {
 // WindowDetector returns the name of the currently focused window.
 type WindowDetector interface {
 	ActiveWindow() (name string, err error)
+	// ActiveWindowTitle returns the window title text (e.g. browser page title).
+	// May return empty string if not available.
+	ActiveWindowTitle() (title string, err error)
 }
 
 // IdleDetector returns the system idle duration.
@@ -139,17 +142,43 @@ func (t *Tracker) tick(lastActiveApp *string, lastChangeTime *time.Time) {
 		*lastChangeTime = time.Now()
 	}
 
-	// Clean up app name (remove path prefixes, window titles from browsers, etc.)
-	app = sanitizeAppName(app)
+	// Get window title for URL/site extraction
+	title, _ := t.detector.ActiveWindowTitle()
 
-	if err := t.store.RecordTick(app, afk); err != nil {
+	// Clean up app name and extract site name if applicable
+	app, site := sanitizeAppName(app, title, t.store.GetSplitBrowserURLs())
+
+	if err := t.store.RecordTick(app, site, afk); err != nil {
 		log.Printf("[tracker] record error: %v", err)
 	}
 }
 
 // sanitizeAppName cleans up a window title to get the logical app name.
-func sanitizeAppName(title string) string {
-	return extractAppName(title)
+// Returns (appName, siteName). siteName is non-empty only when splitURLs is enabled
+// and the window is a browser tab with an identifiable site.
+func sanitizeAppName(appID, title string, splitURLs bool) (string, string) {
+	clean := extractAppName(appID)
+	if !splitURLs {
+		return clean, ""
+	}
+	if title == "" {
+		return clean, ""
+	}
+	// Check if this is a browser — only extract site for browsers
+	isBrowser := false
+	browserKeywords := []string{"browser", "chrome", "firefox", "brave", "safari", "edge", "opera", "vivaldi", "chromium", "mozilla", "web"}
+	lower := strings.ToLower(clean)
+	for _, kw := range browserKeywords {
+		if strings.Contains(lower, kw) {
+			isBrowser = true
+			break
+		}
+	}
+	if !isBrowser && !looksLikeWebTab(appID) {
+		return clean, ""
+	}
+	site := extractSiteName(title)
+	return clean, site
 }
 
 // getGPUPercent tries to read GPU utilization via nvidia-smi or platform fallbacks.

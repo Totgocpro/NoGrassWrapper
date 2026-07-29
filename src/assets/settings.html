@@ -90,6 +90,14 @@ textarea:focus { border-color:#34d399; }
       <label for="hidden_apps">Hidden applications</label>
       <textarea id="hidden_apps" placeholder="firefox&#10;chrome&#10;discord"></textarea>
       <div class="hint">Enter one app name per line. Matching is case-insensitive — &quot;firefox&quot; will match &quot;Firefox&quot;, &quot;Firefox Developer&quot;, etc.</div>
+
+      <hr style="border:none;border-top:1px solid #2a2a55;margin:20px 0;">
+
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:0;">
+        <input type="checkbox" id="split_browser_urls" style="width:16px;height:16px;accent-color:#34d399;">
+        <span style="font-size:13px;color:#c8c8e6;">Split browser URLs into sub-times</span>
+      </label>
+      <div class="hint" style="margin-left:26px;">When enabled, browser time is broken down by site (e.g. Brave → netflix.com, youtube.com). Only visible in the wrapper image.</div>
     </div>
 
     <div class="buttons" style="margin-top:auto;padding-top:24px;">
@@ -120,6 +128,9 @@ async function init() {
     if (d.hidden_apps && d.hidden_apps.length > 0) {
       document.getElementById('hidden_apps').value = d.hidden_apps.join('\n');
     }
+    if (d.split_browser_urls) {
+      document.getElementById('split_browser_urls').checked = true;
+    }
   } catch(e) {}
 }
 
@@ -147,6 +158,7 @@ async function save() {
     fd.set('avatar_path', document.getElementById('avatar').value);
   }
   fd.set('hidden_apps', document.getElementById('hidden_apps').value);
+  fd.set('split_browser_urls', document.getElementById('split_browser_urls').checked ? 'true' : 'false');
   await fetch('/save', {method: 'POST', body: fd});
   window.close();
 }
