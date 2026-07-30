@@ -8,6 +8,7 @@
 [![Coffee Required](https://img.shields.io/badge/Coffee%20Required-Yes-8B4513)](#)
 [![Bugs](https://img.shields.io/badge/Bugs-0%20(that%20you%20know%20of)-yellow)](#)
 [![Downloads](https://img.shields.io/github/downloads/Totgocpro/NoGrassWrapper/total)](#)
+[![CodeFactor](https://www.codefactor.io/repository/github/totgocpro/nograsswrapper/badge)](https://www.codefactor.io/repository/github/totgocpro/nograsswrapper)
 
 > **Track your screen time, earn achievements, and judge your PC usage with style (or not).**
 
