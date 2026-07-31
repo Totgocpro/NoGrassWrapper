@@ -30,13 +30,13 @@ func (d *osDetector) ActiveWindowTitle() (string, error) {
 		return "Unknown", nil
 	}
 
-	len, _, _ := procGetWindowTextLenW.Call(hwnd)
-	if len == 0 {
+	textLen, _, _ := procGetWindowTextLenW.Call(hwnd)
+	if textLen == 0 {
 		return "Unknown", nil
 	}
 
-	buf := make([]uint16, len+1)
-	procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len+1))
+	buf := make([]uint16, textLen+1)
+	procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(textLen+1))
 	return windows.UTF16ToString(buf), nil
 }
 

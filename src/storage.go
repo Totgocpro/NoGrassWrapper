@@ -555,17 +555,14 @@ func (s *Storage) ActivityHeatmap() ActivityHeatmap {
 	return hm
 }
 
-// TotalData aggregates all daily records into a single total record.
-func (s *Storage) TotalData() *DailyRecord {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+// aggregateAll merges all daily records into a single total record.
+func aggregateAll(daily map[string]*DailyRecord) *DailyRecord {
 	total := &DailyRecord{
 		Date: "Total",
 		Apps: make(map[string]*AppUsage),
 	}
 
-	for _, day := range s.data.DailyRecords {
+	for _, day := range daily {
 		total.TotalSeconds += day.TotalSeconds
 		total.ActiveSeconds += day.ActiveSeconds
 		total.AFKSeconds += day.AFKSeconds
@@ -614,6 +611,13 @@ func (s *Storage) TotalData() *DailyRecord {
 	return total
 }
 
+// TotalData aggregates all daily records into a single total record.
+func (s *Storage) TotalData() *DailyRecord {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return aggregateAll(s.data.DailyRecords)
+}
+
 // Snapshot returns all display data atomically under a single read lock.
 type Snapshot struct {
 	Data             *DailyRecord
@@ -647,55 +651,7 @@ func (s *Storage) Snapshot() *Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	total := &DailyRecord{
-		Date: "Total",
-		Apps: make(map[string]*AppUsage),
-	}
-	for _, day := range s.data.DailyRecords {
-		total.TotalSeconds += day.TotalSeconds
-		total.ActiveSeconds += day.ActiveSeconds
-		total.AFKSeconds += day.AFKSeconds
-		for name, app := range day.Apps {
-			if existing, ok := total.Apps[name]; ok {
-				existing.TotalSeconds += app.TotalSeconds
-				if app.LastSeen.After(existing.LastSeen) {
-					existing.LastSeen = app.LastSeen
-				}
-				// Aggregate sub-apps
-				for subName, subApp := range app.SubApps {
-					if existing.SubApps == nil {
-						existing.SubApps = make(map[string]*AppUsage)
-					}
-					if es, ok := existing.SubApps[subName]; ok {
-						es.TotalSeconds += subApp.TotalSeconds
-					} else {
-						existing.SubApps[subName] = &AppUsage{
-							Name:         subApp.Name,
-							TotalSeconds: subApp.TotalSeconds,
-							LastSeen:     subApp.LastSeen,
-						}
-					}
-				}
-			} else {
-				cp := &AppUsage{
-					Name:         app.Name,
-					TotalSeconds: app.TotalSeconds,
-					LastSeen:     app.LastSeen,
-				}
-				if len(app.SubApps) > 0 {
-					cp.SubApps = make(map[string]*AppUsage, len(app.SubApps))
-					for subName, subApp := range app.SubApps {
-						cp.SubApps[subName] = &AppUsage{
-							Name:         subApp.Name,
-							TotalSeconds: subApp.TotalSeconds,
-							LastSeen:     subApp.LastSeen,
-						}
-					}
-				}
-				total.Apps[name] = cp
-			}
-		}
-	}
+	total := aggregateAll(s.data.DailyRecords)
 
 	// Copy today's hardware stats into the aggregated total for PCDyingScore
 	if today, ok := s.data.DailyRecords[time.Now().Format("2006-01-02")]; ok {
