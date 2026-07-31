@@ -48,9 +48,36 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: no
 var
   UsernamePage: TInputQueryWizardPage;
   AvatarPage: TInputFileWizardPage;
+  UpdatePage: TOutputMsgWizardPage;
+
+function IsUpdateInstall(): Boolean;
+var
+  UninstallKey: string;
+begin
+  // Already installed if the executable exists in the install dir,
+  // an uninstall entry exists, or user data already exists.
+  Result := FileExists(ExpandConstant('{app}\{#MyAppExeName}'));
+  if not Result then
+  begin
+    UninstallKey := Format('Software\Microsoft\Windows\CurrentVersion\Uninstall\%s_is1', ['{#MyAppName}']);
+    Result := RegValueExists(HKEY_CURRENT_USER, UninstallKey, 'UninstallString');
+  end;
+  if not Result then
+    Result := FileExists(ExpandConstant('{userappdata}\NoGrassWrapper\usage.json'));
+end;
 
 procedure InitializeWizard;
 begin
+  // Update page (only shown when updating an existing installation)
+  UpdatePage := CreateOutputMsgPage(
+    wpWelcome,
+    'Updating {#MyAppName}',
+    'Updating to version {#MyAppVersion}',
+    'An existing installation of {#MyAppName} was detected on this computer.' + #13#10 +
+    'The installer will update your current installation to version {#MyAppVersion}.' + #13#10 + #13#10 +
+    'Your username, avatar and usage history will be preserved.'
+  );
+
   // Username page
   UsernamePage := CreateInputQueryPage(
     wpSelectTasks,
@@ -75,6 +102,17 @@ begin
   );
 end;
 
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if PageID = UpdatePage.ID then
+    // Update page is only shown when updating an existing installation
+    Result := not IsUpdateInstall
+  else if (PageID = UsernamePage.ID) or (PageID = AvatarPage.ID) then
+    // Profile pages are only shown on a fresh install
+    Result := IsUpdateInstall;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ConfigDir, ConfigFile: string;
@@ -83,6 +121,10 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
+    // On update, keep the existing profile and usage data untouched
+    if IsUpdateInstall then
+      exit;
+
     ConfigDir := ExpandConstant('{userappdata}\NoGrassWrapper');
     if not DirExists(ConfigDir) then
       ForceDirectories(ConfigDir);
