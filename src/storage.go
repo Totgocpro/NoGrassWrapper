@@ -458,6 +458,20 @@ func (s *Storage) SetSplitBrowserURLs(v bool) {
 	s.data.SplitBrowserURLs = v
 }
 
+// GetHideApps returns whether the applications section is hidden in the wrapper image.
+func (s *Storage) GetHideApps() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.data.HideApps
+}
+
+// SetHideApps sets whether the applications section is hidden in the wrapper image.
+func (s *Storage) SetHideApps(v bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data.HideApps = v
+}
+
 // Streak returns the current streak.
 func (s *Storage) Streak() int {
 	s.mu.RLock()
@@ -612,6 +626,7 @@ type Snapshot struct {
 	WeekChange       int   // percentage change vs previous week
 	HiddenApps       []string
 	SplitBrowserURLs bool
+	HideApps         bool
 }
 
 func weekBounds(t time.Time) (monday time.Time, sunday time.Time) {
@@ -751,6 +766,7 @@ func (s *Storage) Snapshot() *Snapshot {
 		WeekChange:       weekChange,
 		HiddenApps:       append([]string{}, s.data.HiddenApps...),
 		SplitBrowserURLs: s.data.SplitBrowserURLs,
+		HideApps:         s.data.HideApps,
 	}
 }
 

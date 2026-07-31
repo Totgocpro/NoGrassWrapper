@@ -103,7 +103,7 @@ var appColors = []color.RGBA{
 }
 
 // GenerateBytes generates the PNG image and returns it as bytes.
-func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap, splitBrowserURLs bool) ([]byte, error) {
+func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap, splitBrowserURLs, hideApps bool) ([]byte, error) {
 	dc := gg.NewContext(w.width, w.height)
 
 	w.drawBackground(dc)
@@ -115,7 +115,7 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 	tier := Tier(score, float64(data.ActiveSeconds)/3600.0)
 	w.drawStats(dc, data, streak, longestStreak, score, grade, tier, lastGrassDay, weekAvg, weekChange)
 	w.drawAchievements(dc, achievements)
-	w.drawAppBars(dc, data, hiddenApps, splitBrowserURLs)
+	w.drawAppBars(dc, data, hiddenApps, splitBrowserURLs, hideApps)
 	w.drawHeatmap(dc, heatmap)
 	w.drawFooter(dc, streak, longestStreak, score, data.PCDyingScore())
 
@@ -127,8 +127,8 @@ func (w *WrapperImage) GenerateBytes(data *DailyRecord, streak, longestStreak in
 }
 
 // Generate creates a PNG image at the given path with usage stats.
-func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap, splitBrowserURLs bool) error {
-	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps, heatmap, splitBrowserURLs)
+func (w *WrapperImage) Generate(path string, today *DailyRecord, streak, longestStreak int, avatarPath string, achievements []Achievement, username, lastGrassDay string, weekAvg int64, weekChange int, hiddenApps []string, heatmap ActivityHeatmap, splitBrowserURLs, hideApps bool) error {
+	data, err := w.GenerateBytes(today, streak, longestStreak, avatarPath, achievements, username, lastGrassDay, weekAvg, weekChange, hiddenApps, heatmap, splitBrowserURLs, hideApps)
 	if err != nil {
 		return err
 	}
@@ -303,7 +303,21 @@ type displayEntry struct {
 	IsSub    bool
 }
 
-func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApps []string, splitURLs bool) {
+func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApps []string, splitURLs, hideApps bool) {
+	dc.SetColor(color.RGBA{200, 200, 230, 255})
+	fontFaceBold(dc, 16)
+	dc.DrawStringAnchored("Top Applications (All Time)", 740, 205, 0.5, 0.5)
+
+	if hideApps {
+		fontFace(dc, 14)
+		dc.SetColor(color.RGBA{120, 120, 160, 255})
+		dc.DrawStringAnchored("Applications hidden in settings", 740, 300, 0.5, 0.5)
+		dc.SetColor(color.RGBA{90, 90, 120, 255})
+		fontFace(dc, 11)
+		dc.DrawStringAnchored("Still tracking — re-enable anytime", 740, 325, 0.5, 0.5)
+		return
+	}
+
 	type appData struct {
 		Usage *AppUsage
 		Name  string
@@ -456,7 +470,6 @@ func (w *WrapperImage) drawAppBars(dc *gg.Context, today *DailyRecord, hiddenApp
 
 	dc.SetColor(color.RGBA{200, 200, 230, 255})
 	fontFaceBold(dc, 16)
-	dc.DrawStringAnchored("Top Applications (All Time)", 740, 205, 0.5, 0.5)
 
 	if len(entries) == 0 {
 		fontFace(dc, 14)

@@ -98,6 +98,12 @@ textarea:focus { border-color:#34d399; }
         <span style="font-size:13px;color:#c8c8e6;">Split browser URLs into sub-times</span>
       </label>
       <div class="hint" style="margin-left:26px;">When enabled, browser time is broken down by site (e.g. Brave → netflix.com, youtube.com). Only visible in the wrapper image.</div>
+
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:0;">
+        <input type="checkbox" id="hide_apps" style="width:16px;height:16px;accent-color:#34d399;">
+        <span style="font-size:13px;color:#c8c8e6;">Hide applications section</span>
+      </label>
+      <div class="hint" style="margin-left:26px;">When enabled, the "Top Applications" section is replaced with a message in the wrapper image. Apps are still tracked, just not shown.</div>
     </div>
 
     <div class="buttons" style="margin-top:auto;padding-top:24px;">
@@ -131,6 +137,9 @@ async function init() {
     if (d.split_browser_urls) {
       document.getElementById('split_browser_urls').checked = true;
     }
+    if (d.hide_apps) {
+      document.getElementById('hide_apps').checked = true;
+    }
   } catch(e) {}
 }
 
@@ -159,6 +168,7 @@ async function save() {
   }
   fd.set('hidden_apps', document.getElementById('hidden_apps').value);
   fd.set('split_browser_urls', document.getElementById('split_browser_urls').checked ? 'true' : 'false');
+  fd.set('hide_apps', document.getElementById('hide_apps').checked ? 'true' : 'false');
   await fetch('/save', {method: 'POST', body: fd});
   window.close();
 }
